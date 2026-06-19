@@ -1,5 +1,7 @@
 import logging
+import os
 import sys
+from logging.handlers import RotatingFileHandler
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -10,6 +12,7 @@ from quicksftp.ui.views.site_manager import SiteManagerWidget
 from quicksftp.ui.views.port_forward_dialog import PortForwardDialog
 from quicksftp.ui.views.settings_dialog import SettingsDialog
 from quicksftp.core.settings import SettingsManager
+from quicksftp.core.config import get_data_path
 
 
 class MainWindow(QMainWindow):
@@ -269,7 +272,17 @@ class MainWindow(QMainWindow):
             self.site_manager.hide()
 
         except Exception as e:
-            QMessageBox.critical(self, "连接失败", f"无法连接到 {tab_name}:\n{e}")
+            err_type = type(e).__name__
+            error_msg = str(e)
+            
+            if err_type == "PermissionDenied":
+                error_msg = "认证失败：请检查用户名、密码或私钥是否正确。\n(服务器拒绝了连接请求)"
+            elif err_type in ("TimeoutError", "ConnectionError") or "timeout" in error_msg.lower():
+                error_msg = f"网络超时：{error_msg}\n(请检查服务器 IP、端口以及防火墙设置)"
+            elif "Connection refused" in error_msg:
+                error_msg = "连接被拒绝：目标服务器不存在或未开放对应端口。"
+                
+            QMessageBox.critical(self, "连接失败", f"无法连接到 {tab_name}:\n\n{error_msg}")
 
     def closeEvent(self, event):
         """
@@ -306,12 +319,34 @@ class MainWindow(QMainWindow):
             widget.deleteLater()
 
 
-def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+def setup_logging():
+    log_dir = get_data_path("logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "quicksftp.log")
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
+
+    # 文件日志：最多保留5个备份，每个5MB
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    file_handler.setFormatter(formatter)
+    root_logger.addHandler(file_handler)
+
+    # 控制台日志
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+    root_logger.addHandler(stream_handler)
+
+
+def main():
+    setup_logging()
 
     app = QApplication(sys.argv)
 
