@@ -48,6 +48,7 @@ jobs:
         run: |
           uv run python -m nuitka --assume-yes-for-downloads --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
           mv main.app QuickSFTP.app
+          tar -czf QuickSFTP-macOS-portable.tar.gz QuickSFTP.app
           mkdir dmg_dir
           mv QuickSFTP.app dmg_dir/
           ln -s /Applications dmg_dir/Applications
@@ -59,6 +60,7 @@ jobs:
           uv run python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
           Rename-Item -Path "build_output\main.dist\main.exe" -NewName "QuickSFTP.exe"
           Rename-Item -Path "build_output\main.dist" -NewName "QuickSFTP"
+          Compress-Archive -Path "build_output\QuickSFTP" -DestinationPath QuickSFTP-Windows-portable.zip
           $issContent = @"
           [Setup]
           AppName=QuickSFTP
@@ -97,5 +99,7 @@ jobs:
         with:
           files: |
             QuickSFTP-macOS.dmg
+            QuickSFTP-macOS-portable.tar.gz
             QuickSFTP-Windows-Setup.exe
+            QuickSFTP-Windows-portable.zip
             QuickSFTP-Linux.tar.gz
