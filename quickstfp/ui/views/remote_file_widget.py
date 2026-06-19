@@ -238,7 +238,8 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
             self.download_item(item)
 
     def download_item(self, item: QStandardItem) -> None:
-        download_dir = tempfile.gettempdir()
+        from quickstfp.core.settings import SettingsManager
+        download_dir = SettingsManager.get("temp_download_dir", tempfile.gettempdir())
         self.sftp_tab_widget.transport_control_widget.get(self.get_item_path(item), download_dir, 20)
 
     def del_items(self) -> None:

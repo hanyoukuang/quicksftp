@@ -3,9 +3,9 @@ import logging
 import os
 import datetime
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QComboBox, \
-    QSplitter, QListWidget, QLabel, QMessageBox
+    QSplitter, QLabel, QMessageBox, QButtonGroup
 
 from quickstfp.ui.components.terminal_widget import SSHPtyWidget
 from quickstfp.ui.views.local_widgets import LocalFileWidget
@@ -17,17 +17,64 @@ from quickstfp.ui.views.directory_diff_dialog import DirectoryDiffDialog
 logger = logging.getLogger(__name__)
 
 
-class ControlWidget(QListWidget):
+class ControlWidget(QWidget):
     """
     左侧导航栏
     已彻底解耦，仅负责展示选项，不包含任何外部组件的调用逻辑
     """
+    currentRowChanged = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self.addItems(["💻 SSH 终端", "📂 文件浏览", "📤 传输管理"])
-        # 默认选中第一项，使其与 QStackedWidget 默认的 0 索引对齐
-        self.setCurrentRow(0)
+        self.setFixedWidth(100)  # 保持较窄以扩大终端显示范围
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 5, 0, 0)
+        layout.setSpacing(2)
+        
+        self.btn_group = QButtonGroup(self)
+        self.btn_group.setExclusive(True)
+        self.btn_group.idClicked.connect(self.currentRowChanged.emit)
+
+        items = ["💻 终端", "📂 文件", "📤 传输"]
+        tooltips = ["SSH 终端", "文件浏览", "传输管理"]
+        
+        for i, (text, tooltip) in enumerate(zip(items, tooltips)):
+            btn = QPushButton(text)
+            btn.setToolTip(tooltip)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            # 扁平化风格，图标文字居左，类似 PyCharm 侧边栏
+            btn.setStyleSheet("""
+                QPushButton {
+                    text-align: left;
+                    padding: 8px 12px;
+                    border: none;
+                    background: transparent;
+                    color: #e0e0e0;
+                    font-size: 13px;
+                }
+                QPushButton:checked {
+                    background: #4a6da7;
+                    border-left: 3px solid #8ab4f8;
+                    font-weight: bold;
+                }
+                QPushButton:hover:!checked {
+                    background: #444;
+                }
+            """)
+            layout.addWidget(btn)
+            self.btn_group.addButton(btn, i)
+            
+        layout.addStretch()
+        
+        # 默认选中第一项
+        self.btn_group.button(0).setChecked(True)
+
+    def setCurrentRow(self, row: int):
+        btn = self.btn_group.button(row)
+        if btn:
+            btn.setChecked(True)
+            self.currentRowChanged.emit(row)
 
 
 class UserSFTPWidget(QWidget):

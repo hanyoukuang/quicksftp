@@ -16,8 +16,8 @@ from PySide6.QtGui import QKeyEvent, QResizeEvent, QAction
 from PySide6.QtWidgets import QApplication, QMenu
 
 from quickstfp.core.session import SSHSFTPInfo
-from terminal.widget import TerminalWidget
-from terminal.input_handler import InputHandler
+from quickstfp.ui.components.terminal import PyqTerminal
+from quickstfp.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
 
@@ -115,15 +115,11 @@ class TerminalBridge(QObject):
             )
 
 
-class SSHPtyWidget(TerminalWidget):
-    """SSH pseudo-terminal view — extends pyqterminal TerminalWidget.
-
-    Uses ``display_only=True`` because the asyncssh PTY (not pyqterminal's
-    PtyTerminal) manages the actual shell.
-    """
+class SSHPtyWidget(PyqTerminal):
+    """SSH pseudo-terminal view."""
 
     def __init__(self, info: SSHSFTPInfo):
-        super().__init__(rows=24, cols=80, display_only=True)
+        super().__init__(rows=24, cols=80)
         self.info = info
 
         # ── I/O bridge (asyncssh ↔ terminal widget) ────────────────────
@@ -131,22 +127,20 @@ class SSHPtyWidget(TerminalWidget):
 
         # SSH output → terminal display
         self.bridge.output.connect(self._on_ssh_output)
+        
+        # Terminal input → SSH
+        self.keyPressed.connect(self._send_input)
+        self.resized.connect(self._on_resized)
 
     # ── SSH I/O ──────────────────────────────────────────────────────────
 
     def _on_ssh_output(self, data: str):
         """Receive SSH stdout and feed it to the terminal renderer."""
-        self.feed(data)
+        self.write(data)
 
     def _send_input(self, data: str):
         """Send raw bytes / text to asyncssh stdin."""
         self.bridge.on_input(data)
-
-    def _paste_to_ssh(self):
-        """Override parent paste to route clipboard text to asyncssh."""
-        text = QApplication.clipboard().text()
-        if text:
-            self._send_input(text)
 
     def _start_bridge(self):
         """Start the terminal bridge once the event loop is running.
@@ -160,39 +154,45 @@ class SSHPtyWidget(TerminalWidget):
         """Trigger bridge startup when the widget becomes visible."""
         super().showEvent(event)
         QTimer.singleShot(0, self._start_bridge)
+        
+    def _on_resized(self, rows: int, cols: int):
+        """Propagate terminal resize to the asyncssh PTY."""
+        if self.info.loop.is_running() and getattr(self.info, "process", None):
+            self.info.loop.call_soon_threadsafe(
+                self.info.process.change_terminal_size, cols, rows
+            )
 
-    # ── Context menu (Chinese + icons, overriding published English menu) ─
+    # ── Context menu (Chinese + icons) ────────────────────────────────────
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
 
         copy_action = QAction("📋 复制", menu)
         copy_action.setShortcut("Ctrl+Shift+C")
-        copy_action.triggered.connect(self._copy_selection)
-        copy_action.setEnabled(bool(self._sel_start))
+        copy_action.triggered.connect(self.copy_selection)
+        copy_action.setEnabled(bool(self.selection_start))
         menu.addAction(copy_action)
 
         paste_action = QAction("📋 粘贴", menu)
         paste_action.setShortcut("Ctrl+Shift+V")
-        paste_action.triggered.connect(self._paste_to_ssh)
+        paste_action.triggered.connect(self.paste_clipboard)
         menu.addAction(paste_action)
 
         menu.addSeparator()
 
         zoom_in = QAction("🔍 放大", menu)
         zoom_in.setShortcut("Ctrl++")
-        zoom_in.triggered.connect(lambda: self._change_font_size(1))
+        zoom_in.triggered.connect(lambda: self.set_font_size(self.terminal_font.pointSize() + 1))
         menu.addAction(zoom_in)
 
         zoom_out = QAction("🔎 缩小", menu)
         zoom_out.setShortcut("Ctrl+-")
-        zoom_out.triggered.connect(lambda: self._change_font_size(-1))
+        zoom_out.triggered.connect(lambda: self.set_font_size(self.terminal_font.pointSize() - 1))
         menu.addAction(zoom_out)
 
         zoom_reset = QAction("↩️ 重置缩放", menu)
         zoom_reset.setShortcut("Ctrl+0")
-        zoom_reset.triggered.connect(lambda: self._change_font_size(
-            13 - self._font.pointSize()))
+        zoom_reset.triggered.connect(lambda: self.set_font_size(14))
         menu.addAction(zoom_reset)
 
         menu.exec(event.globalPos())
@@ -200,16 +200,7 @@ class SSHPtyWidget(TerminalWidget):
     # ── Focus (prevent Tab from triggering Qt focus navigation) ─────────
 
     def event(self, event: QEvent):
-        """Intercept Tab/Backtab before Qt's focus-navigation handler.
-
-        Qt processes Tab at the ``event()`` level and may consume it
-        (moving focus to the next widget) before ``keyPressEvent`` is
-        ever called.  We check here first and route Tab to our own
-        handler so it reaches the SSH session.
-
-        On macOS Qt may deliver Shift+Tab as ``Qt.Key_Backtab`` —
-        normalize it to ``Qt.Key_Tab | Qt.ShiftModifier`` for the encoder.
-        """
+        """Intercept Tab/Backtab before Qt's focus-navigation handler."""
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             if key == Qt.Key_Tab:
@@ -228,14 +219,9 @@ class SSHPtyWidget(TerminalWidget):
                 return True
         return super().event(event)
 
-    # ── Keyboard (override for SSH input routing) ────────────────────────
+    # ── Keyboard (override for zoom shortcuts) ───────────────────────────
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        """Handle keyboard input — routes non-shortcut keys to asyncssh.
-
-        Inherits zoom / copy / scrollback shortcuts from TerminalWidget,
-        then sends everything else to the SSH connection.
-        """
         key = event.key()
         mods = event.modifiers()
 
@@ -245,79 +231,11 @@ class SSHPtyWidget(TerminalWidget):
             zoom_mod = zoom_mod and bool(mods & Qt.ShiftModifier)
         if zoom_mod and key in (Qt.Key_Plus, Qt.Key_Equal, Qt.Key_Minus):
             delta = 1 if key != Qt.Key_Minus else -1
-            self._change_font_size(delta)
+            self.set_font_size(self.terminal_font.pointSize() + delta)
             return
         if zoom_mod and key == Qt.Key_0:
-            self._change_font_size(13 - self._font.pointSize())
+            self.set_font_size(14)
             return
 
-        # ── Scrollback shortcuts ───────────────────────────────────
-        if key == Qt.Key_PageUp and mods & Qt.ShiftModifier:
-            sb_len = self._term.scrollback_len()
-            self._scroll_offset = min(
-                sb_len, self._scroll_offset + self._rows // 2
-            )
-            self.update()
-            return
-        if key == Qt.Key_PageDown and mods & Qt.ShiftModifier:
-            self._scroll_offset = max(
-                0, self._scroll_offset - self._rows // 2
-            )
-            self.update()
-            return
+        super().keyPressEvent(event)
 
-        # ── Copy ───────────────────────────────────────────────────
-        copy_key = key == Qt.Key_C
-        copy_mod = bool(mods & Qt.ControlModifier)
-        if sys.platform == "darwin":
-            is_copy = copy_key and copy_mod and not (mods & Qt.ShiftModifier)
-        else:
-            is_copy = copy_key and copy_mod and bool(mods & Qt.ShiftModifier)
-        if is_copy:
-            self._copy_selection()
-            return
-
-        # ── Paste (route to SSH) ────────────────────────────────────
-        paste_key = key == Qt.Key_V
-        paste_mod = bool(mods & Qt.ControlModifier)
-        if sys.platform == "darwin":
-            is_paste = paste_key and paste_mod and not (mods & Qt.ShiftModifier)
-        else:
-            is_paste = paste_key and paste_mod and bool(mods & Qt.ShiftModifier)
-        if is_paste:
-            self._clear_selection()
-            self._paste_to_ssh()
-            return
-
-        # ── All other keys → SSH stdin ─────────────────────────────
-        self._clear_selection()
-        data = InputHandler.encode(event)
-        if data:
-            self._send_input(data.decode("utf-8", errors="replace"))
-
-    # ── Font zoom (propagate new dimensions to asyncssh) ─────────────────
-
-    def _change_font_size(self, delta: int) -> None:
-        """Override to propagate font-zoom-induced terminal resize to SSH."""
-        super()._change_font_size(delta)
-        if self.info.loop.is_running() and getattr(self.info, "process", None):
-            self.info.loop.call_soon_threadsafe(
-                self.info.process.change_terminal_size,
-                self.cols, self.rows,
-            )
-
-    # ── Resize (propagate to asyncssh) ───────────────────────────────────
-
-    def resizeEvent(self, event: QResizeEvent) -> None:
-        """Handle widget resize — update terminal geometry and notify SSH."""
-        prev_cols, prev_rows = self._cols, self._rows
-
-        super().resizeEvent(event)
-
-        # Only propagate to SSH if dimensions actually changed
-        if (self._cols != prev_cols or self._rows != prev_rows):
-            if self.info.loop.is_running() and getattr(self.info, "process", None):
-                self.info.loop.call_soon_threadsafe(
-                    self.info.process.change_terminal_size,
-                    self.cols, self.rows,
-                )

@@ -2,7 +2,14 @@
 
 跨平台 SFTP/SSH 客户端工具。支持多标签页终端、并发文件传输与站点管理。
 
-终端渲染基于 [pyqterminal](https://pypi.org/project/pyqterminal/)，使用原生 QPainter + Rust VT520 解析器（[par-term-emu-core-rust](https://github.com/paulrobello/par-term-emu-core-rust)），无 Web 依赖。
+终端渲染基于自定义纯 Python 实现的终端小组件，底层使用 [pyte](https://github.com/selectel/pyte) 进行终端状态解析，并搭配原生 QPainter 进行高速图形绘制，摆脱了原本笨重的二进制依赖，实现了完全轻量化且无 Web 依赖。
+
+## 主要特性
+
+- 💼 多标签页并发 SFTP/SSH 会话与站点管理器
+- 🎨 支持深色 / 浅色模式秒级切换
+- ⚙️ 全局设置中心（支持自定义终端字体、文字大小与临时下载目录）
+- ⌨️ 极简风格 PyCharm 式侧边导航，为您提供更大范围的沉浸式终端体验
 
 ## 安装
 

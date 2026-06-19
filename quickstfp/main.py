@@ -8,6 +8,8 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox
 from quickstfp.ui.views.sftp_tab_widget import SFTPTabWidget
 from quickstfp.ui.views.site_manager import SiteManagerWidget
 from quickstfp.ui.views.port_forward_dialog import PortForwardDialog
+from quickstfp.ui.views.settings_dialog import SettingsDialog
+from quickstfp.core.settings import SettingsManager
 
 
 class MainWindow(QMainWindow):
@@ -41,6 +43,10 @@ class MainWindow(QMainWindow):
         port_fwd_action = QAction("🔗 端口转发", self)
         port_fwd_action.triggered.connect(self._open_port_forward)
         toolbar.addAction(port_fwd_action)
+        
+        settings_action = QAction("⚙️ 设置", self)
+        settings_action.triggered.connect(self.open_settings)
+        toolbar.addAction(settings_action)
 
         self._dark_mode = False
         self._apply_theme()
@@ -59,6 +65,22 @@ class MainWindow(QMainWindow):
         self._port_fwd_dialog.show()
         self._port_fwd_dialog.raise_()
         self._port_fwd_dialog.activateWindow()
+
+    def open_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.settings_changed.connect(self.apply_global_settings)
+        dialog.exec()
+
+    def apply_global_settings(self):
+        # Update existing terminals
+        font_family = SettingsManager.get("font_family")
+        font_size = SettingsManager.get("font_size")
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if hasattr(tab, "terminal_panel"):
+                pty = tab.terminal_panel.ssh_pty_widget
+                pty.terminal_font.setFamily(font_family)
+                pty.set_font_size(font_size)
 
     def _toggle_dark_mode(self, checked: bool):
         self._dark_mode = checked
