@@ -6,9 +6,23 @@ import re
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTreeWidget, \
-    QTreeWidgetItem, QMenu, QInputDialog, QMessageBox, QLineEdit, QFormLayout, QDialog, \
-    QDialogButtonBox, QComboBox
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QMenu,
+    QInputDialog,
+    QMessageBox,
+    QLineEdit,
+    QFormLayout,
+    QDialog,
+    QDialogButtonBox,
+    QComboBox,
+)
 
 from quicksftp.core.config import get_data_path
 
@@ -41,34 +55,40 @@ class SnippetDialog(QDialog):
         layout.addRow("命令:", self.cmd_edit)
         layout.addRow("可见范围:", self.scope_combo)
 
-        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btn_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         btn_box.accepted.connect(self.accept)
         btn_box.rejected.connect(self.reject)
         layout.addRow(btn_box)
 
     def get_data(self):
-        return self.name_edit.text().strip(), self.cmd_edit.text().strip(), self.scope_combo.currentData()
+        return (
+            self.name_edit.text().strip(),
+            self.cmd_edit.text().strip(),
+            self.scope_combo.currentData(),
+        )
 
 
 class QuickSnippetsWidget(QWidget):
     """快捷命令侧边栏组件 (支持全局与站点区分 + 右键菜单)"""
+
     command_triggered = Signal(str)
 
     def __init__(self, site_id: str):
         super().__init__()
         self.site_id = site_id
         self.snippets_file = get_data_path("quick_snippets_v2.json")
-        self.data = {
-            "global": [],
-            "sites": {}
-        }
+        self.data = {"global": [], "sites": {}}
         self._history_file = get_data_path("quicksftp_command_history.json")
         self._history: list[dict] = []
         self._load_history()
         self.init_ui()
         self.load_snippets()
 
-    def _substitute_template(self, cmd: str, remote_path: str = "", session_url: str = "") -> str:
+    def _substitute_template(
+        self, cmd: str, remote_path: str = "", session_url: str = ""
+    ) -> str:
         """FEAT-17: 替换命令模板变量"""
         result = cmd
 
@@ -79,7 +99,7 @@ class QuickSnippetsWidget(QWidget):
                 return text
             return match.group(0)
 
-        result = re.sub(r'!\?(.+?)!', _prompt_replacer, result)
+        result = re.sub(r"!\?(.+?)!", _prompt_replacer, result)
         result = result.replace("!S", session_url or f"{self.site_id}")
         result = result.replace("!", remote_path)
         return result
@@ -87,14 +107,14 @@ class QuickSnippetsWidget(QWidget):
     def _load_history(self):
         if os.path.exists(self._history_file):
             try:
-                with open(self._history_file, 'r', encoding='utf-8') as f:
+                with open(self._history_file, "r", encoding="utf-8") as f:
                     self._history = json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load snippet history: {e}")
                 self._history = []
 
     def _save_history(self):
-        with open(self._history_file, 'w', encoding='utf-8') as f:
+        with open(self._history_file, "w", encoding="utf-8") as f:
             json.dump(self._history[-500:], f, ensure_ascii=False, indent=2)
 
     def init_ui(self):
@@ -179,7 +199,7 @@ class QuickSnippetsWidget(QWidget):
     def load_snippets(self):
         if os.path.exists(self.snippets_file):
             try:
-                with open(self.snippets_file, 'r', encoding='utf-8') as f:
+                with open(self.snippets_file, "r", encoding="utf-8") as f:
                     loaded_data = json.load(f)
                     self.data["global"] = loaded_data.get("global", [])
                     self.data["sites"] = loaded_data.get("sites", {})
@@ -193,7 +213,7 @@ class QuickSnippetsWidget(QWidget):
 
     def save_snippets(self):
         try:
-            with open(self.snippets_file, 'w', encoding='utf-8') as f:
+            with open(self.snippets_file, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
         except Exception as e:
             QMessageBox.warning(self, "保存失败", str(e))
@@ -205,15 +225,23 @@ class QuickSnippetsWidget(QWidget):
         global_root.setFlags(Qt.ItemFlag.ItemIsEnabled)
         for idx, snip in enumerate(self.data["global"]):
             item = QTreeWidgetItem(global_root, [f"{snip['name']}\n> {snip['cmd']}"])
-            item.setToolTip(0, snip['cmd'])
-            item.setData(0, Qt.ItemDataRole.UserRole, {"type": "global", "index": idx, "data": snip})
+            item.setToolTip(0, snip["cmd"])
+            item.setData(
+                0,
+                Qt.ItemDataRole.UserRole,
+                {"type": "global", "index": idx, "data": snip},
+            )
 
         site_root = QTreeWidgetItem(self.tree, ["💻 本站命令"])
         site_root.setFlags(Qt.ItemFlag.ItemIsEnabled)
         for idx, snip in enumerate(self.data["sites"][self.site_id]):
             item = QTreeWidgetItem(site_root, [f"{snip['name']}\n> {snip['cmd']}"])
-            item.setToolTip(0, snip['cmd'])
-            item.setData(0, Qt.ItemDataRole.UserRole, {"type": "site", "index": idx, "data": snip})
+            item.setToolTip(0, snip["cmd"])
+            item.setData(
+                0,
+                Qt.ItemDataRole.UserRole,
+                {"type": "site", "index": idx, "data": snip},
+            )
 
         self.tree.expandAll()
 
@@ -225,16 +253,18 @@ class QuickSnippetsWidget(QWidget):
 
     def edit_snippet(self):
         item = self.tree.currentItem()
-        if not item or not item.data(0, Qt.ItemDataRole.UserRole): return
+        if not item or not item.data(0, Qt.ItemDataRole.UserRole):
+            return
 
         meta = item.data(0, Qt.ItemDataRole.UserRole)
         old_scope = meta["type"]
         snip = meta["data"]
 
-        dialog = SnippetDialog(self, snip['name'], snip['cmd'], old_scope)
+        dialog = SnippetDialog(self, snip["name"], snip["cmd"], old_scope)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             name, cmd, new_scope = dialog.get_data()
-            if not (name and cmd): return
+            if not (name and cmd):
+                return
 
             if old_scope != new_scope:
                 self._get_target_list(old_scope).pop(meta["index"])
@@ -248,7 +278,8 @@ class QuickSnippetsWidget(QWidget):
 
     def del_snippet(self):
         item = self.tree.currentItem()
-        if not item or not item.data(0, Qt.ItemDataRole.UserRole): return
+        if not item or not item.data(0, Qt.ItemDataRole.UserRole):
+            return
 
         reply = QMessageBox.question(self, "确认删除", "确定要删除该快捷命令吗？")
         if reply == QMessageBox.StandardButton.Yes:
@@ -261,15 +292,18 @@ class QuickSnippetsWidget(QWidget):
 
     def execute_item(self, item, column, remote_path: str = ""):
         meta = item.data(0, Qt.ItemDataRole.UserRole)
-        if not meta: return
+        if not meta:
+            return
 
         snip = meta["data"]
-        cmd = self._substitute_template(snip['cmd'], remote_path)
-        self._history.append({
-            "cmd": cmd.strip(),
-            "name": snip.get("name", ""),
-            "time": datetime.now().isoformat(),
-            "site": self.site_id,
-        })
+        cmd = self._substitute_template(snip["cmd"], remote_path)
+        self._history.append(
+            {
+                "cmd": cmd.strip(),
+                "name": snip.get("name", ""),
+                "time": datetime.now().isoformat(),
+                "site": self.site_id,
+            }
+        )
         self._save_history()
-        self.command_triggered.emit(cmd + '\r')
+        self.command_triggered.emit(cmd + "\r")

@@ -129,7 +129,7 @@ class SSHPtyWidget(PyqTerminal):
 
         # SSH output → terminal display
         self.bridge.output.connect(self._on_ssh_output)
-        
+
         # Terminal input → SSH
         self.keyPressed.connect(self._send_input)
         self.resized.connect(self._on_resized)
@@ -156,7 +156,7 @@ class SSHPtyWidget(PyqTerminal):
         """Trigger bridge startup when the widget becomes visible."""
         super().showEvent(event)
         QTimer.singleShot(0, self._start_bridge)
-        
+
     def _on_resized(self, rows: int, cols: int):
         """Propagate terminal resize to the asyncssh PTY."""
         if self.info.loop.is_running() and getattr(self.info, "process", None):
@@ -184,17 +184,23 @@ class SSHPtyWidget(PyqTerminal):
 
         zoom_in = QAction("🔍 放大", menu)
         zoom_in.setShortcut("Ctrl++")
-        zoom_in.triggered.connect(lambda: self.set_font_size(self.terminal_font.pointSize() + 1))
+        zoom_in.triggered.connect(
+            lambda: self.set_font_size(self.terminal_font.pointSize() + 1)
+        )
         menu.addAction(zoom_in)
 
         zoom_out = QAction("🔎 缩小", menu)
         zoom_out.setShortcut("Ctrl+-")
-        zoom_out.triggered.connect(lambda: self.set_font_size(self.terminal_font.pointSize() - 1))
+        zoom_out.triggered.connect(
+            lambda: self.set_font_size(self.terminal_font.pointSize() - 1)
+        )
         menu.addAction(zoom_out)
 
         zoom_reset = QAction("↩️ 重置缩放", menu)
         zoom_reset.setShortcut("Ctrl+0")
-        zoom_reset.triggered.connect(lambda: self.set_font_size(SettingsManager.get("font_size", 14)))
+        zoom_reset.triggered.connect(
+            lambda: self.set_font_size(SettingsManager.get("font_size", 14))
+        )
         menu.addAction(zoom_reset)
 
         menu.exec(event.globalPos())
@@ -240,4 +246,3 @@ class SSHPtyWidget(PyqTerminal):
             return
 
         super().keyPressEvent(event)
-

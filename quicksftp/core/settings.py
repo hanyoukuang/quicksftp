@@ -8,12 +8,14 @@ logger = logging.getLogger(__name__)
 
 SETTINGS_FILE = get_data_path("settings.json", legacy_cwd_fallback=False)
 
+
 def get_default_settings():
     return {
         "temp_download_dir": str(Path.home() / "Downloads" / "QuickSFTP"),
         "font_family": "Courier New",  # Default fallback
         "font_size": 14,
     }
+
 
 class SettingsManager:
     _settings = None

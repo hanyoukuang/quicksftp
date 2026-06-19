@@ -4,9 +4,20 @@ import tempfile
 
 from PySide6.QtCore import Qt, QModelIndex, QTimer
 from PySide6.QtGui import QStandardItem
-from PySide6.QtWidgets import QMessageBox, QInputDialog, QLineEdit, QMenu, QDialog, QAbstractItemView
+from PySide6.QtWidgets import (
+    QMessageBox,
+    QInputDialog,
+    QLineEdit,
+    QMenu,
+    QDialog,
+    QAbstractItemView,
+)
 
-from quicksftp.ui.views.editor_widgets import Edit, ExternalEditorWatcher, PermissionDialog
+from quicksftp.ui.views.editor_widgets import (
+    Edit,
+    ExternalEditorWatcher,
+    PermissionDialog,
+)
 from quicksftp.ui.views.base_remote_tree import BaseRemoteTreeWidget
 from quicksftp.ui.views.remote_drag_drop import RemoteDragDropMixin
 from quicksftp.ui.views.batch_rename_dialog import BatchRenameDialog
@@ -70,8 +81,12 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
         # ── 文件/文件夹操作（右键命中具体条目时）──
         if item:
-            menu.addAction("📝 内置编辑器打开").triggered.connect(self._defer(self.double_item, index))
-            menu.addAction("🖊️ 外部程序编辑").triggered.connect(self._defer(self.open_external, index))
+            menu.addAction("📝 内置编辑器打开").triggered.connect(
+                self._defer(self.double_item, index)
+            )
+            menu.addAction("🖊️ 外部程序编辑").triggered.connect(
+                self._defer(self.open_external, index)
+            )
             menu.addAction("🗑️ 删除").triggered.connect(self._defer(self.del_items))
             menu.addAction("📦 移动").triggered.connect(self.move_items)
             menu.addAction("📋 复制").triggered.connect(self.copy_items)
@@ -79,17 +94,25 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
         # ── 拖放操作 ──
         if self.move_paths:
-            menu.addAction("📥 放置").triggered.connect(self._defer(self.put_items, item))
+            menu.addAction("📥 放置").triggered.connect(
+                self._defer(self.put_items, item)
+            )
         if self.copy_paths:
-            menu.addAction("📋 粘贴").triggered.connect(self._defer(self.paste_items, item))
+            menu.addAction("📋 粘贴").triggered.connect(
+                self._defer(self.paste_items, item)
+            )
 
         # ── 单项 / 批量操作 ──
         selected = self.selectedItems()
         if len(selected) == 1 and item:
             menu.addAction("✏️ 重命名").triggered.connect(self._defer(self.rename, item))
-            menu.addAction("⚙️ 属性/权限").triggered.connect(self._defer(self.change_permissions, item))
+            menu.addAction("⚙️ 属性/权限").triggered.connect(
+                self._defer(self.change_permissions, item)
+            )
         elif len(selected) > 1:
-            menu.addAction("✏️ 批量重命名").triggered.connect(self._defer(self._batch_rename))
+            menu.addAction("✏️ 批量重命名").triggered.connect(
+                self._defer(self._batch_rename)
+            )
 
         menu.exec(self.mapToGlobal(pos))
 
@@ -104,8 +127,10 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
                 file_size = self.info.get_file_size(path)
                 if file_size > self.MAX_PREVIEW_SIZE:
                     reply = QMessageBox.question(
-                        self, "文件过大", f"文件较大（{file_size / 1024 / 1024:.2f} MB），建议直接下载，是否继续拉取？",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                        self,
+                        "文件过大",
+                        f"文件较大（{file_size / 1024 / 1024:.2f} MB），建议直接下载，是否继续拉取？",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     )
                     if reply == QMessageBox.StandardButton.No:
                         return
@@ -114,12 +139,16 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
                 text = self.info.read_file(path)
                 self.external_watcher.open_in_external_editor(path, text)
             else:
-                QMessageBox.warning(self, "无法编辑", "外部编辑目前仅支持文本代码文件。")
+                QMessageBox.warning(
+                    self, "无法编辑", "外部编辑目前仅支持文本代码文件。"
+                )
         except Exception as e:
             QMessageBox.warning(self, "操作失败", f"无法操作外部编辑器:\n{e}")
 
     def rename(self, item: QStandardItem) -> None:
-        text, ok = QInputDialog.getText(self, "重命名", "输入新的文件名", QLineEdit.EchoMode.Normal, item.text())
+        text, ok = QInputDialog.getText(
+            self, "重命名", "输入新的文件名", QLineEdit.EchoMode.Normal, item.text()
+        )
         if ok and text:
             try:
                 self.info.rename(item.text(), str(text))
@@ -171,7 +200,7 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
     def get_target_dir(self, item: QStandardItem) -> str:
         """根据右键所在的 item，获取正确的粘贴/放置目标目录"""
-        base_path = getattr(self, 'abspath', self.info.getcwd())
+        base_path = getattr(self, "abspath", self.info.getcwd())
         if not item:
             return base_path
 
@@ -198,7 +227,9 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
                 new_perms = dialog.get_new_permissions()
                 if new_perms != current_perms:
                     self.info.chmod(path, new_perms)
-                    QMessageBox.information(self, "成功", f"【{item.text()}】权限修改成功！")
+                    QMessageBox.information(
+                        self, "成功", f"【{item.text()}】权限修改成功！"
+                    )
                     self.refresh()
         except Exception as e:
             QMessageBox.warning(self, "操作失败", f"无法获取或修改文件权限:\n{e}")
@@ -216,7 +247,9 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
         for moved_item, old_path in self.move_paths:
             # 取出 UI 节点所在的父层级用于恢复显示
-            parent_idx = moved_item.parent().index() if moved_item.parent() else QModelIndex()
+            parent_idx = (
+                moved_item.parent().index() if moved_item.parent() else QModelIndex()
+            )
             try:
                 self.info.move_file(old_path, target_dir)
                 self.setRowHidden(moved_item.row(), parent_idx, False)
@@ -225,7 +258,11 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
                 self.setRowHidden(moved_item.row(), parent_idx, False)
 
         if failed_msgs:
-            QMessageBox.warning(self, "移动失败", "以下文件移动失败，可能权限不足:\n" + "\n".join(failed_msgs))
+            QMessageBox.warning(
+                self,
+                "移动失败",
+                "以下文件移动失败，可能权限不足:\n" + "\n".join(failed_msgs),
+            )
         self.move_paths.clear()
         self.refresh()
 
@@ -235,19 +272,27 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
     def download_item(self, item: QStandardItem) -> None:
         from quicksftp.core.settings import SettingsManager
+
         download_dir = SettingsManager.get("temp_download_dir", tempfile.gettempdir())
-        self.sftp_tab_widget.transport_control_widget.get(self.get_item_path(item), download_dir, 20)
+        self.sftp_tab_widget.transport_control_widget.get(
+            self.get_item_path(item), download_dir, 20
+        )
 
     def del_items(self) -> None:
         text = "\n".join([item.text() for item in self.selectedItems()])
-        reply = QMessageBox.question(self, "删除", f"确认删除:\n{text}\n",
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "删除",
+            f"确认删除:\n{text}\n",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             for item in self.selectedItems():
                 self.del_item(item)
 
     def double_item(self, index: QModelIndex):
-        if index.column() != 0: index = index.siblingAtColumn(0)
+        if index.column() != 0:
+            index = index.siblingAtColumn(0)
         item = self.model.itemFromIndex(index)
         path = self.get_item_path(item)
 
@@ -256,10 +301,13 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
                 file_size = self.info.get_file_size(path)
                 if file_size > self.MAX_PREVIEW_SIZE:
                     reply = QMessageBox.question(
-                        self, "文件过大", f"文件较大（{file_size / 1024 / 1024:.2f} MB），是否下载？",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                        self,
+                        "文件过大",
+                        f"文件较大（{file_size / 1024 / 1024:.2f} MB），是否下载？",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     )
-                    if reply == QMessageBox.StandardButton.Yes: self.download_item(item)
+                    if reply == QMessageBox.StandardButton.Yes:
+                        self.download_item(item)
                     return
                 text = self.info.read_file(path)
                 edit = Edit(self, self.info.realpath(path), text)
@@ -273,7 +321,11 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
 
     def move_items(self) -> None:
         for item in self.selectedItems():
-            self.setRowHidden(item.row(), item.parent().index() if item.parent() else QModelIndex(), True)
+            self.setRowHidden(
+                item.row(),
+                item.parent().index() if item.parent() else QModelIndex(),
+                True,
+            )
             self.move_paths.append((item, self.get_item_path(item)))
 
     def copy_items(self) -> None:
@@ -293,12 +345,9 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
             old_name = item.text()
             if old_name in rename_map:
                 path = self.get_item_path(item)
-                parent_dir = "/".join(path.split("/")[:-1])
+                "/".join(path.split("/")[:-1])
                 try:
                     self.info.rename(path, rename_map[old_name])
                 except Exception as e:
                     logger.warning(f"Batch rename failed for {old_name}: {e}")
         self.refresh()
-
-
-

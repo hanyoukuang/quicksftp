@@ -38,3 +38,8 @@ packages = ["quicksftp"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 qt_api = "pyside6"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.18",
+]

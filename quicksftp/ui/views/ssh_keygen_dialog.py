@@ -1,8 +1,17 @@
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QHBoxLayout, QLineEdit, QPushButton,
-    QComboBox, QDialogButtonBox, QFileDialog, QMessageBox, QTextEdit
+    QDialog,
+    QVBoxLayout,
+    QFormLayout,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QDialogButtonBox,
+    QFileDialog,
+    QMessageBox,
+    QTextEdit,
 )
 
 import asyncssh
@@ -102,8 +111,16 @@ class SSHKeygenDialog(QDialog):
                 )
 
             encryption_note = "🔒 Passphrase 已加密" if passphrase else "⚠️ 无密码保护"
-            private_pem = private_key.decode("utf-8") if isinstance(private_key, bytes) else str(private_key)
-            public_text = f"ssh-ed25519 {public_key.decode('utf-8')} {comment}" if isinstance(public_key, bytes) else f"{key_type} {public_key} {comment}"
+            private_pem = (
+                private_key.decode("utf-8")
+                if isinstance(private_key, bytes)
+                else str(private_key)
+            )
+            public_text = (
+                f"ssh-ed25519 {public_key.decode('utf-8')} {comment}"
+                if isinstance(public_key, bytes)
+                else f"{key_type} {public_key} {comment}"
+            )
 
             with open(save_path, "w") as f:
                 f.write(private_pem)
@@ -121,9 +138,12 @@ class SSHKeygenDialog(QDialog):
                 f"{encryption_note}"
             )
 
-            QMessageBox.information(self, "成功",
+            QMessageBox.information(
+                self,
+                "成功",
                 f"密钥对已生成!\n\n私钥: {save_path}\n公钥: {pub_path}\n\n"
-                f"如需部署到服务器，请在站点管理器中选择该私钥文件。")
+                f"如需部署到服务器，请在站点管理器中选择该私钥文件。",
+            )
 
         except Exception as e:
             QMessageBox.critical(self, "生成失败", str(e))

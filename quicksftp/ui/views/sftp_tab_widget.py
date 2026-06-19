@@ -1,6 +1,12 @@
 # ui/views/sftp_tab_widget.py
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QWidget, QSplitter, QHBoxLayout, QStackedWidget, QMessageBox
+from PySide6.QtWidgets import (
+    QWidget,
+    QSplitter,
+    QHBoxLayout,
+    QStackedWidget,
+    QMessageBox,
+)
 
 from quicksftp.core.session import SSHSFTPInfo
 from quicksftp.ui.views.user_widgets import ControlWidget, UserSFTPWidget, TerminalPanel
@@ -12,8 +18,16 @@ class SFTPTabWidget(QWidget):
     单个会话标签页的总控容器
     """
 
-    def __init__(self, host: str, port: int, username: str, password: str = None, client_keys: list = None,
-                 passphrase: str = None, verify_host_key: bool = True):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str = None,
+        client_keys: list = None,
+        passphrase: str = None,
+        verify_host_key: bool = True,
+    ):
         super().__init__()
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
@@ -43,8 +57,12 @@ class SFTPTabWidget(QWidget):
 
     def _init_session(self):
         self.info = SSHSFTPInfo(
-            self._host, self._port, self._username,
-            self._password, self._client_keys, self._passphrase,
+            self._host,
+            self._port,
+            self._username,
+            self._password,
+            self._client_keys,
+            self._passphrase,
             self._verify_host_key,
         )
         self.info.start()
@@ -53,11 +71,12 @@ class SFTPTabWidget(QWidget):
         while self.info._host_key_warning:
             fp = self.info._host_key_fingerprint or "(无法读取)"
             reply = QMessageBox.question(
-                self, "主机密钥验证失败",
+                self,
+                "主机密钥验证失败",
                 f"服务器 {self._host}:{self._port} 的主机密钥不在 ~/.ssh/known_hosts 中。\n\n"
                 f"指纹: {fp}\n\n"
                 f"可能是首次连接该服务器，或者服务器密钥已变更。\n"
-                f"是否跳过验证，直接登录？",
+                f"是否信任并保存该主机的密钥？",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -66,8 +85,12 @@ class SFTPTabWidget(QWidget):
                 self.info.wait(3000)
                 self._verify_host_key = False
                 self.info = SSHSFTPInfo(
-                    self._host, self._port, self._username,
-                    self._password, self._client_keys, self._passphrase,
+                    self._host,
+                    self._port,
+                    self._username,
+                    self._password,
+                    self._client_keys,
+                    self._passphrase,
                     verify_host_key=False,
                 )
                 self.info.start()
@@ -85,10 +108,15 @@ class SFTPTabWidget(QWidget):
             if not self._health_status:
                 self.window().tab_widget.setTabText(
                     self.window().tab_widget.indexOf(self),
-                    self.window().tab_widget.tabText(self.window().tab_widget.indexOf(self)).replace("🔴", "🟢"))
+                    self.window()
+                    .tab_widget.tabText(self.window().tab_widget.indexOf(self))
+                    .replace("🔴", "🟢"),
+                )
                 self._health_status = True
                 if self.window().tab_widget.currentWidget() == self:
-                    self.window()._on_tab_changed(self.window().tab_widget.indexOf(self))
+                    self.window()._on_tab_changed(
+                        self.window().tab_widget.indexOf(self)
+                    )
         except Exception:
             if self._health_status:
                 idx = self.window().tab_widget.indexOf(self)
@@ -96,7 +124,9 @@ class SFTPTabWidget(QWidget):
                 self.window().tab_widget.setTabText(idx, f"🔴 {name}")
                 self._health_status = False
                 if self.window().tab_widget.currentWidget() == self:
-                    self.window()._on_tab_changed(self.window().tab_widget.indexOf(self))
+                    self.window()._on_tab_changed(
+                        self.window().tab_widget.indexOf(self)
+                    )
 
     def init_ui(self):
         # 组装面板
@@ -110,7 +140,9 @@ class SFTPTabWidget(QWidget):
         self.splitter.setStretchFactor(1, 3)
         self.hbox.addWidget(self.splitter)
         self.setLayout(self.hbox)
-        self.control_widget.currentRowChanged.connect(self.stacked_widget.setCurrentIndex)
+        self.control_widget.currentRowChanged.connect(
+            self.stacked_widget.setCurrentIndex
+        )
 
     def closeEvent(self, event, /):
         super().closeEvent(event)

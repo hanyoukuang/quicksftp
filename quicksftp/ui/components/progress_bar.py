@@ -1,13 +1,21 @@
 # ui/components/progress_bar.py
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QProgressBar, QWidget, QHBoxLayout, QLabel, QMessageBox, QPushButton
+from PySide6.QtWidgets import (
+    QProgressBar,
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+)
 
 
 class ProgressBar(QWidget):
     """
     独立的文件传输进度条组件。
     """
+
     update_pbar_msg = Signal(int)
     init_pbar_msg = Signal(int)
     transport_fail_msg = Signal(str)
@@ -81,10 +89,7 @@ class ProgressBar(QWidget):
     def warning_transport_fail_filename(self, value: str):
         if value:
             QMessageBox.warning(
-                self,
-                "传输警告",
-                f"传输失败:\n{value}",
-                QMessageBox.StandardButton.Ok
+                self, "传输警告", f"传输失败:\n{value}", QMessageBox.StandardButton.Ok
             )
 
     @Slot(str)

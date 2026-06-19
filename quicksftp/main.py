@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.tabCloseRequested.connect(self.close_tab)  # 绑定关闭事件
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.setCentralWidget(self.tab_widget)
-        
+
         # 2. 初始化底部状态栏
         self.status_bar = self.statusBar()
         self.status_label = QLabel(" ⚡ 准备就绪 ")
@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
         port_fwd_action = QAction("🔗 端口转发", self)
         port_fwd_action.triggered.connect(self._open_port_forward)
         toolbar.addAction(port_fwd_action)
-        
+
         settings_action = QAction("⚙️ 设置", self)
         settings_action.triggered.connect(self.open_settings)
         toolbar.addAction(settings_action)
@@ -64,18 +64,22 @@ class MainWindow(QMainWindow):
         if index == -1:
             self.status_label.setText(" ⚡ 准备就绪 - 没有打开的连接 ")
             return
-            
+
         widget = self.tab_widget.widget(index)
-        if hasattr(widget, 'info'):
+        if hasattr(widget, "info"):
             host = widget._host
             user = widget._username
             port = widget._port
-            state = "🟢 已连接" if getattr(widget, '_health_status', True) else "🔴 连接断开"
+            state = (
+                "🟢 已连接"
+                if getattr(widget, "_health_status", True)
+                else "🔴 连接断开"
+            )
             self.status_label.setText(f" {state} | {user}@{host}:{port} ")
 
     def _open_port_forward(self):
         current = self.tab_widget.currentWidget()
-        if not current or not hasattr(current, 'info'):
+        if not current or not hasattr(current, "info"):
             return
         if self._port_fwd_dialog is None:
             self._port_fwd_dialog = PortForwardDialog(self, session=current.info)
@@ -110,9 +114,11 @@ class MainWindow(QMainWindow):
         # Update control widgets in all tabs
         for i in range(self.tab_widget.count()):
             tab = self.tab_widget.widget(i)
-            if hasattr(tab, 'control_widget') and hasattr(tab.control_widget, 'update_theme'):
+            if hasattr(tab, "control_widget") and hasattr(
+                tab.control_widget, "update_theme"
+            ):
                 tab.control_widget.update_theme(self._dark_mode)
-                
+
         if not self._dark_mode:
             # 明确设置亮色模式样式
             self.setStyleSheet("""

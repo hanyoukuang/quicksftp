@@ -1,11 +1,20 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, QPushButton,
-    QComboBox, QSpinBox, QTreeWidget, QTreeWidgetItem, QLabel, QHeaderView
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QSpinBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QLabel,
+    QHeaderView,
 )
 
 
 class PortForwardDialog(QDialog):
-
     def __init__(self, parent=None, session=None):
         super().__init__(parent)
         self.setWindowTitle("SSH 端口转发 (SSH Tunnel)")
@@ -16,7 +25,9 @@ class PortForwardDialog(QDialog):
 
         self._tunnel_list = QTreeWidget()
         self._tunnel_list.setHeaderLabels(["类型", "监听端口", "目标地址", "状态"])
-        self._tunnel_list.header().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self._tunnel_list.header().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
         layout.addWidget(self._tunnel_list)
 
         self._hint = QLabel()
@@ -64,14 +75,17 @@ class PortForwardDialog(QDialog):
             self._listen_label.setText("本地监听端口:")
             self._target_label.setText("远端地址:")
             self._target_port_label.setText("远端端口:")
-            self._hint.setText("效果：访问 localhost:监听端口 → SSH → 远端地址:远端端口")
+            self._hint.setText(
+                "效果：访问 localhost:监听端口 → SSH → 远端地址:远端端口"
+            )
         else:  # Remote
             self._listen_label.setText("服务器监听端口:")
             self._target_label.setText("本机地址:")
             self._target_port_label.setText("本机端口:")
             self._hint.setText(
                 "效果：访问 服务器:监听端口 → SSH → 本机地址:本机端口\n"
-                "⚠ 如果外网无法访问，检查服务器 /etc/ssh/sshd_config 中 GatewayPorts yes")
+                "⚠ 如果外网无法访问，检查服务器 /etc/ssh/sshd_config 中 GatewayPorts yes"
+            )
 
     def _add_tunnel(self):
         tunnel_type = self._type_combo.currentData()
@@ -86,11 +100,15 @@ class PortForwardDialog(QDialog):
         target_addr = f"{target_host}:{target_port}"
 
         try:
-            if self._session and hasattr(self._session, 'forward_local_port'):
+            if self._session and hasattr(self._session, "forward_local_port"):
                 if tunnel_type == "local":
-                    self._session.forward_local_port('', listen_port, target_host, target_port)
+                    self._session.forward_local_port(
+                        "", listen_port, target_host, target_port
+                    )
                 else:
-                    self._session.forward_remote_port('', listen_port, target_host, target_port)
+                    self._session.forward_remote_port(
+                        "", listen_port, target_host, target_port
+                    )
                 status = "✅ 已建立"
             else:
                 status = "❌ 无活动会话"
@@ -103,7 +121,9 @@ class PortForwardDialog(QDialog):
     def _del_tunnel(self):
         item = self._tunnel_list.currentItem()
         if item:
-            self._tunnel_list.takeTopLevelItem(self._tunnel_list.indexOfTopLevelItem(item))
+            self._tunnel_list.takeTopLevelItem(
+                self._tunnel_list.indexOfTopLevelItem(item)
+            )
 
     def closeEvent(self, event):
         self.hide()

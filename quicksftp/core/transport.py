@@ -71,7 +71,9 @@ class ImmediateSchedulerPool:
 
         while len(self.running_tasks) < self.max_workers and self.pending_tasks:
             self._all_done_event.clear()
-            is_big_slot_open = (self._big_task_ref is None) or (self._big_task_ref.done())
+            is_big_slot_open = (self._big_task_ref is None) or (
+                self._big_task_ref.done()
+            )
 
             if is_big_slot_open:
                 task_data = self.pending_tasks.pop()
@@ -141,7 +143,7 @@ class ImmediateSchedulerPool:
 class ProgressTracker:
     """独立的进度追踪器，支持断点续传的初始进度偏移和网速计算"""
 
-    def __init__(self, transport_instance: 'Transport', initial_size: int = 0):
+    def __init__(self, transport_instance: "Transport", initial_size: int = 0):
         self.transport = transport_instance
         self.last_size = initial_size  # 记录初始偏移量
 
@@ -150,7 +152,9 @@ class ProgressTracker:
             self.transport._total_progress_size += initial_size
             self.transport.progress_updated.emit(self.transport._total_progress_size)
 
-    async def __call__(self, _src: bytes, _loc: bytes, now_size: int, _all_size: int) -> None:
+    async def __call__(
+        self, _src: bytes, _loc: bytes, now_size: int, _all_size: int
+    ) -> None:
         delta = now_size - self.last_size
         async with self.transport._state_lock:
             self.transport._total_progress_size += delta
@@ -161,7 +165,10 @@ class ProgressTracker:
         time_delta = now_time - self.transport._last_time
         if time_delta >= 0.5:
             async with self.transport._state_lock:
-                size_delta = self.transport._total_progress_size - self.transport._last_speed_size
+                size_delta = (
+                    self.transport._total_progress_size
+                    - self.transport._last_speed_size
+                )
                 speed = size_delta / time_delta
                 self.transport._last_time = now_time
                 self.transport._last_speed_size = self.transport._total_progress_size
@@ -190,6 +197,7 @@ class Transport(QObject):
     """
     基础传输核心类。完全脱离 UI 控件依赖，仅通过信号(Signal)进行状态广播。
     """
+
     # 解耦专用信号：UI 层只需监听这些信号即可更新进度条
     progress_updated = Signal(int)  # 更新当前进度
     range_initialized = Signal(int)  # 初始化总任务大小
@@ -198,7 +206,9 @@ class Transport(QObject):
     speed_updated = Signal(str)  # 网速
     transport_completed = Signal()  # 所有传输任务完成
 
-    def __init__(self, src: str, loc: str, co_num: int, speed_limit: int, info: 'SSHSFTPInfo') -> None:
+    def __init__(
+        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo"
+    ) -> None:
         super().__init__()
         self.is_cancel = False
         self.src = src
@@ -248,7 +258,9 @@ class Transport(QObject):
 
         # 这里保留原来的逻辑：通知具体哪些文件失败了
         if self.transport_fail_filename:
-            self.transport_failed.emit(f"部分文件读写失败:\n{self.transport_fail_filename}")
+            self.transport_failed.emit(
+                f"部分文件读写失败:\n{self.transport_fail_filename}"
+            )
 
         self.transport_completed.emit()
 
@@ -290,10 +302,10 @@ class Transport(QObject):
     @staticmethod
     def _resume_state(target_size: int, source_size: int) -> tuple:
         if target_size == source_size and source_size != 0:
-            return 'wb', target_size, True
+            return "wb", target_size, True
         if 0 < target_size < source_size:
-            return 'ab', target_size, False
-        return 'wb', 0, False
+            return "ab", target_size, False
+        return "wb", 0, False
 
     def _should_skip_file(self, filename: str) -> bool:
         patterns = self.filter_patterns.strip()
@@ -309,7 +321,9 @@ class Transport(QObject):
 class GET(Transport):
     """下载任务核心类"""
 
-    def __init__(self, src: str, loc: str, co_num: int, speed_limit: int, info: 'SSHSFTPInfo') -> None:
+    def __init__(
+        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo"
+    ) -> None:
         super().__init__(src, loc, co_num, speed_limit, info)
 
     async def _transport_file(self, src: str, loc: str) -> None:
@@ -325,7 +339,7 @@ class GET(Transport):
             tracker = ProgressTracker(self, initial_size=start_pos)
             chunk_size = self._calc_chunk_size()
 
-            async with self.sftp.open(src, 'rb') as remote_file:
+            async with self.sftp.open(src, "rb") as remote_file:
                 if start_pos > 0:
                     await remote_file.seek(start_pos)
                 with open(loc, mode) as local_file:
@@ -338,7 +352,7 @@ class GET(Transport):
                             break
                         local_file.write(chunk)
                         now_size += len(chunk)
-                        await tracker(b'', b'', now_size, remote_size)
+                        await tracker(b"", b"", now_size, remote_size)
 
         except asyncio.CancelledError:
             # 捕获用户主动取消的信号，直接退出，绝不能调用 handle_fail 抛出任何进度条信号
@@ -355,17 +369,21 @@ class GET(Transport):
         task_list = []
         total = 0
         async for entry in self.sftp.scandir(src):
-            if entry.filename in ('.', '..'):
+            if entry.filename in (".", ".."):
                 continue
             next_src = "/".join((src, entry.filename))
             next_loc = "/".join((loc, entry.filename))
             if entry.attrs.type == 2:  # Directory
-                task_list.append(asyncio.create_task(self.search_transport_file(next_src, next_loc)))
+                task_list.append(
+                    asyncio.create_task(self.search_transport_file(next_src, next_loc))
+                )
             else:  # File
                 if self._should_skip_file(entry.filename):
                     continue
                 total += entry.attrs.size
-                self.transport_coro_list.append((entry.attrs.size, self._transport_file(next_src, next_loc)))
+                self.transport_coro_list.append(
+                    (entry.attrs.size, self._transport_file(next_src, next_loc))
+                )
 
         for future in asyncio.as_completed(task_list):
             total += await future
@@ -388,7 +406,9 @@ class GET(Transport):
 class PUT(Transport):
     """上传任务核心类"""
 
-    def __init__(self, src: str, loc: str, co_num: int, speed_limit: int, session: 'SSHSFTPInfo') -> None:
+    def __init__(
+        self, src: str, loc: str, co_num: int, speed_limit: int, session: "SSHSFTPInfo"
+    ) -> None:
         super().__init__(src, loc, co_num, speed_limit, session)
         self.task_list_mkdir = []
 
@@ -411,7 +431,7 @@ class PUT(Transport):
             async with self.sftp.open(loc, mode) as remote_file:
                 if start_pos > 0:
                     await remote_file.seek(start_pos)
-                with open(src, 'rb') as local_file:
+                with open(src, "rb") as local_file:
                     local_file.seek(start_pos)
                     now_size = start_pos
                     while True:
@@ -422,7 +442,7 @@ class PUT(Transport):
                             break
                         await remote_file.write(chunk)
                         now_size += len(chunk)
-                        await tracker(b'', b'', now_size, local_size)
+                        await tracker(b"", b"", now_size, local_size)
 
         except asyncio.CancelledError:
             # 用户主动取消，静默退出
@@ -445,7 +465,9 @@ class PUT(Transport):
             else:
                 if self._should_skip_file(entry.name):
                     continue
-                self.transport_coro_list.append((entry.stat().st_size, self._transport_file(next_src, next_loc)))
+                self.transport_coro_list.append(
+                    (entry.stat().st_size, self._transport_file(next_src, next_loc))
+                )
                 total_size += entry.stat().st_size
         return total_size
 

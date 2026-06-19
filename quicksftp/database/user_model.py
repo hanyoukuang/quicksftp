@@ -21,7 +21,7 @@ class CryptoManager:
         self._service_name = "quicksftp"
         self._username = "master_key"
         self._use_keyring = key_file is None
-        self.key_file = key_file or get_data_path('.secret.key')
+        self.key_file = key_file or get_data_path(".secret.key")
         self.key = self._load_or_generate_key()
         self.cipher = Fernet(self.key)
 
@@ -31,7 +31,7 @@ class CryptoManager:
             try:
                 key_str = keyring.get_password(self._service_name, self._username)
                 if key_str:
-                    return key_str.encode('utf-8')
+                    return key_str.encode("utf-8")
             except Exception as e:
                 # 某些环境下 keyring 可能不可用，降级使用文件
                 print(f"Warning: Failed to access keyring: {e}")
@@ -39,12 +39,14 @@ class CryptoManager:
 
         # 2. 从文件读取 (可能是旧版本的数据，或者测试模式，或者 keyring 不可用)
         if os.path.exists(self.key_file):
-            with open(self.key_file, 'rb') as f:
+            with open(self.key_file, "rb") as f:
                 key = f.read()
             # 迁移到 keyring (如果启用了 keyring 且之前是文件存储)
             if self._use_keyring:
                 try:
-                    keyring.set_password(self._service_name, self._username, key.decode('utf-8'))
+                    keyring.set_password(
+                        self._service_name, self._username, key.decode("utf-8")
+                    )
                     # 迁移完成后备份并隐藏旧文件
                     os.rename(self.key_file, self.key_file + ".bak")
                 except Exception as e:
@@ -55,26 +57,28 @@ class CryptoManager:
         key = Fernet.generate_key()
         if self._use_keyring:
             try:
-                keyring.set_password(self._service_name, self._username, key.decode('utf-8'))
+                keyring.set_password(
+                    self._service_name, self._username, key.decode("utf-8")
+                )
                 return key
             except Exception as e:
                 print(f"Warning: Failed to save key to keyring: {e}")
 
         # 4. 降级保存到文件
-        with open(self.key_file, 'wb') as f:
+        with open(self.key_file, "wb") as f:
             f.write(key)
         return key
 
     def encrypt(self, plain_text: str) -> str:
         if not plain_text:
             return plain_text
-        return self.cipher.encrypt(plain_text.encode('utf-8')).decode('utf-8')
+        return self.cipher.encrypt(plain_text.encode("utf-8")).decode("utf-8")
 
     def decrypt(self, cipher_text: str) -> str:
         if not cipher_text:
             return cipher_text
         # 假设所有存储的数据都是加密过的，直接解密
-        return self.cipher.decrypt(cipher_text.encode('utf-8')).decode('utf-8')
+        return self.cipher.decrypt(cipher_text.encode("utf-8")).decode("utf-8")
 
 
 class UserInfoDB:
@@ -89,7 +93,7 @@ class UserInfoDB:
         初始化数据库连接和加密管理器
         :param db_path: 数据库文件路径，默认使用 ~/.config/quicksftp/userinfo.db
         """
-        self.db_path = db_path or get_data_path('userinfo.db')
+        self.db_path = db_path or get_data_path("userinfo.db")
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         self.crypto = CryptoManager()  # 初始化加密器
@@ -98,19 +102,23 @@ class UserInfoDB:
 
     def _migrate_schema(self) -> None:
         """基于版本号的数据库迁移机制"""
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS SchemaVersion (version INTEGER)")
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS SchemaVersion (version INTEGER)"
+        )
         self.cursor.execute("SELECT version FROM SchemaVersion")
         row = self.cursor.fetchone()
         current_version = row[0] if row else 0
         self.conn.commit()
 
         if current_version < 1:
-            self.cursor.execute("INSERT OR REPLACE INTO SchemaVersion (version) VALUES (1)")
+            self.cursor.execute(
+                "INSERT OR REPLACE INTO SchemaVersion (version) VALUES (1)"
+            )
             self.conn.commit()
 
     def create_table(self) -> None:
         """初始化数据表结构"""
-        create_table_password = '''
+        create_table_password = """
             CREATE TABLE IF NOT EXISTS Password (
                 id INTEGER PRIMARY KEY,
                 host TEXT,
@@ -118,8 +126,8 @@ class UserInfoDB:
                 username TEXT,
                 password TEXT
             )
-        '''
-        create_table_key = '''
+        """
+        create_table_key = """
             CREATE TABLE IF NOT EXISTS Key (
                 id INTEGER PRIMARY KEY,
                 host TEXT,
@@ -128,13 +136,13 @@ class UserInfoDB:
                 key_path TEXT,
                 passphrase TEXT
             )
-        '''
-        idx_password = '''
+        """
+        idx_password = """
             CREATE INDEX IF NOT EXISTS idx_password_host ON Password(host, port, username)
-        '''
-        idx_key = '''
+        """
+        idx_key = """
             CREATE INDEX IF NOT EXISTS idx_key_host ON Key(host, port, username)
-        '''
+        """
         self.cursor.execute(create_table_password)
         self.cursor.execute(create_table_key)
         self.cursor.execute(idx_password)
@@ -145,15 +153,22 @@ class UserInfoDB:
     # 密码登录相关的数据操作
     # ==========================================
 
-    def query_password(self, host: str, port: int, username: str, password: str) -> List[Tuple]:
+    def query_password(
+        self, host: str, port: int, username: str, password: str
+    ) -> List[Tuple]:
         """查询时，优先使用 SQL 过滤 host/port/username，仅对匹配行解密后比较密码"""
         sql = "SELECT * FROM Password WHERE host = ? AND port = ? AND username = ?"
         self.cursor.execute(sql, (host, port, username))
         rows = self.cursor.fetchall()
-        return [(r[0], r[1], r[2], r[3], self.crypto.decrypt(r[4]))
-                for r in rows if self.crypto.decrypt(r[4]) == password]
+        return [
+            (r[0], r[1], r[2], r[3], self.crypto.decrypt(r[4]))
+            for r in rows
+            if self.crypto.decrypt(r[4]) == password
+        ]
 
-    def insert_password(self, host: str, port: int, username: str, password: str) -> None:
+    def insert_password(
+        self, host: str, port: int, username: str, password: str
+    ) -> None:
         """
         新增一条密码登录记录，在写入数据库前将 password 加密
         """
@@ -196,15 +211,32 @@ class UserInfoDB:
     # 秘钥登录相关的数据操作
     # ==========================================
 
-    def query_key(self, host: str, port: int, username: str, key_path: str, passphrase: Optional[str] = None) -> List[Tuple]:
+    def query_key(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        key_path: str,
+        passphrase: Optional[str] = None,
+    ) -> List[Tuple]:
         """查询秘钥数据，使用 SQL 过滤 host/port/username/key_path 后仅解密匹配行"""
         sql = "SELECT * FROM Key WHERE host = ? AND port = ? AND username = ? AND key_path = ?"
         self.cursor.execute(sql, (host, port, username, key_path))
         rows = self.cursor.fetchall()
-        return [(r[0], r[1], r[2], r[3], r[4], self.crypto.decrypt(r[5]))
-                for r in rows if self.crypto.decrypt(r[5]) == passphrase]
+        return [
+            (r[0], r[1], r[2], r[3], r[4], self.crypto.decrypt(r[5]))
+            for r in rows
+            if self.crypto.decrypt(r[5]) == passphrase
+        ]
 
-    def insert_key(self, host: str, port: int, username: str, key_path: str, passphrase: Optional[str] = None) -> None:
+    def insert_key(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        key_path: str,
+        passphrase: Optional[str] = None,
+    ) -> None:
         """
         新增一条秘钥登录记录，在写入数据库前将 passphrase 加密
         """
@@ -254,17 +286,28 @@ class UserInfoDB:
         self.close()
         return False
 
-    def update_password(self, idx: int, host: str, port: int, username: str, password: str) -> None:
+    def update_password(
+        self, idx: int, host: str, port: int, username: str, password: str
+    ) -> None:
         """更新密码登录记录"""
         encrypted_password = self.crypto.encrypt(password)
         sql = "UPDATE Password SET host=?, port=?, username=?, password=? WHERE id=?"
         self.cursor.execute(sql, (host, port, username, encrypted_password, idx))
         self.conn.commit()
 
-    def update_key(self, idx: int, host: str, port: int, username: str, key_path: str,
-                   passphrase: Optional[str] = None) -> None:
+    def update_key(
+        self,
+        idx: int,
+        host: str,
+        port: int,
+        username: str,
+        key_path: str,
+        passphrase: Optional[str] = None,
+    ) -> None:
         """更新秘钥登录记录"""
         encrypted_passphrase = self.crypto.encrypt(passphrase or "")
         sql = "UPDATE Key SET host=?, port=?, username=?, key_path=?, passphrase=? WHERE id=?"
-        self.cursor.execute(sql, (host, port, username, key_path, encrypted_passphrase, idx))
+        self.cursor.execute(
+            sql, (host, port, username, key_path, encrypted_passphrase, idx)
+        )
         self.conn.commit()

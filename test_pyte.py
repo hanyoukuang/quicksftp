@@ -1,4 +1,5 @@
 import pyte
+
 s = pyte.HistoryScreen(80, 24, history=100)
 stream = pyte.Stream(s)
 for i in range(30):

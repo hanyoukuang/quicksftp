@@ -4,8 +4,19 @@ import os
 import shutil
 
 from PySide6.QtCore import Qt, QModelIndex, QDir
-from PySide6.QtWidgets import QTreeView, QWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, \
-    QAbstractItemView, QFileSystemModel, QMenu, QInputDialog, QMessageBox
+from PySide6.QtWidgets import (
+    QTreeView,
+    QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QAbstractItemView,
+    QFileSystemModel,
+    QMenu,
+    QInputDialog,
+    QMessageBox,
+)
 
 
 class LocalFileTreeView(QTreeView):
@@ -40,7 +51,11 @@ class LocalFileTreeView(QTreeView):
             event.acceptProposedAction()
             # 解析远端传来的路径
             remote_paths = json.loads(
-                event.mimeData().data("application/x-quicksftp-remote-paths").data().decode('utf-8'))
+                event.mimeData()
+                .data("application/x-quicksftp-remote-paths")
+                .data()
+                .decode("utf-8")
+            )
 
             # 获取当前鼠标放开的位置所在的本地目录
             index = self.indexAt(event.position().toPoint())
@@ -53,7 +68,9 @@ class LocalFileTreeView(QTreeView):
 
             # 触发批量下载
             for remote_path in remote_paths:
-                self.sftp_tab_widget.transport_control_widget.get(remote_path, dst_dir, 20)
+                self.sftp_tab_widget.transport_control_widget.get(
+                    remote_path, dst_dir, 20
+                )
         else:
             # 走原生逻辑，实现本地到本地的拖拽移动
             super().dropEvent(event)
@@ -80,7 +97,8 @@ class LocalFileWidget(QWidget):
         self.tree.setRootIndex(self.model.index(QDir.homePath()))
 
         # 优化显示：隐藏多余的列
-        for i in range(1, 4): self.tree.hideColumn(i)
+        for i in range(1, 4):
+            self.tree.hideColumn(i)
 
         # 3. 顶部路径与控制栏
         self.path_edit = QLineEdit(QDir.homePath())
@@ -164,16 +182,21 @@ class LocalFileWidget(QWidget):
         if index.isValid() and self.model.isDir(index):
             target_dir = self.model.filePath(index)
         else:
-            parent_dir = os.path.dirname(self.model.filePath(index)) if index.isValid() else self.model.filePath(
-                self.tree.rootIndex())
+            parent_dir = (
+                os.path.dirname(self.model.filePath(index))
+                if index.isValid()
+                else self.model.filePath(self.tree.rootIndex())
+            )
             target_dir = parent_dir
 
-        text, ok = QInputDialog.getText(self, "新建文件", "输入带有扩展名的文件名 (如 test.txt)")
+        text, ok = QInputDialog.getText(
+            self, "新建文件", "输入带有扩展名的文件名 (如 test.txt)"
+        )
         if ok and text:
             new_path = os.path.join(target_dir, text)
             try:
                 # 在本地创建一个空文件
-                with open(new_path, 'w', encoding='utf-8') as f:
+                with open(new_path, "w", encoding="utf-8"):
                     pass
             except Exception as e:
                 QMessageBox.warning(self, "失败", f"新建文件失败:\n{e}")
@@ -196,7 +219,9 @@ class LocalFileWidget(QWidget):
     def rename(self, index: QModelIndex):
         old_path = self.model.filePath(index)
         old_name = self.model.fileName(index)
-        text, ok = QInputDialog.getText(self, "重命名", "输入新的名称", QLineEdit.EchoMode.Normal, old_name)
+        text, ok = QInputDialog.getText(
+            self, "重命名", "输入新的名称", QLineEdit.EchoMode.Normal, old_name
+        )
         if ok and text and text != old_name:
             new_path = os.path.join(os.path.dirname(old_path), text)
             try:
@@ -211,8 +236,12 @@ class LocalFileWidget(QWidget):
         paths = [self.model.filePath(idx) for idx in indexes]
 
         text = "\n".join([os.path.basename(p) for p in paths])
-        reply = QMessageBox.question(self, "删除", f"确认删除以下项 (不可恢复)？\n{text}\n",
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "删除",
+            f"确认删除以下项 (不可恢复)？\n{text}\n",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             for path in paths:
                 try:
@@ -239,8 +268,11 @@ class LocalFileWidget(QWidget):
             target_dir = self.model.filePath(index)
         else:
             # 如果右击到了普通文件，或者在空白处右击，默认粘贴到它所在的同级目录/当前根目录
-            parent_dir = os.path.dirname(self.model.filePath(index)) if index.isValid() else self.model.filePath(
-                self.tree.rootIndex())
+            parent_dir = (
+                os.path.dirname(self.model.filePath(index))
+                if index.isValid()
+                else self.model.filePath(self.tree.rootIndex())
+            )
             target_dir = parent_dir
 
         failed_msgs = []
@@ -273,7 +305,9 @@ class LocalFileWidget(QWidget):
                 try:
                     dest = os.path.join(target_dir, os.path.basename(path))
                     if dest.startswith(path):
-                        failed_msgs.append(f"{os.path.basename(path)} -> 不能移动到自身的子目录")
+                        failed_msgs.append(
+                            f"{os.path.basename(path)} -> 不能移动到自身的子目录"
+                        )
                         continue
                     shutil.move(path, target_dir)
                 except Exception as e:
@@ -282,4 +316,6 @@ class LocalFileWidget(QWidget):
             self.move_paths.clear()
 
         if failed_msgs:
-            QMessageBox.warning(self, "部分操作失败", "以下项操作失败:\n" + "\n".join(failed_msgs))
+            QMessageBox.warning(
+                self, "部分操作失败", "以下项操作失败:\n" + "\n".join(failed_msgs)
+            )

@@ -1,11 +1,11 @@
 """Transport 模块单元测试"""
+
 import pytest
 from quicksftp.core.transport import SpeedLimiter, Transport
 from quicksftp.utils.file_utils import path_stand, is_binary
 
 
 class TestPathStand:
-
     def test_joins_source_basename(self):
         src = "/home/user/file.txt"
         loc = "/tmp"
@@ -27,7 +27,6 @@ class TestPathStand:
 
 
 class TestIsBinary:
-
     def test_pdf_is_binary(self):
         assert is_binary("document.pdf") is True
 
@@ -39,7 +38,6 @@ class TestIsBinary:
 
 
 class TestSpeedLimiter:
-
     @pytest.mark.asyncio
     async def test_unlimited_passthrough(self):
         limiter = SpeedLimiter(0)
@@ -47,16 +45,15 @@ class TestSpeedLimiter:
 
 
 class TestResumeState:
-
     def test_new_transfer(self):
         mode, start_pos, is_done = Transport._resume_state(0, 1000)
-        assert mode == 'wb'
+        assert mode == "wb"
         assert start_pos == 0
         assert is_done is False
 
     def test_resume_transfer(self):
         mode, start_pos, is_done = Transport._resume_state(500, 1000)
-        assert mode == 'ab'
+        assert mode == "ab"
         assert start_pos == 500
         assert is_done is False
 

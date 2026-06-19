@@ -14,12 +14,15 @@ class RemoteDragDropMixin:
 
     def startDrag(self, supportedActions):
         items = self.selectedItems()
-        if not items: return
+        if not items:
+            return
         drag = QDrag(self)
         mime_data = QMimeData()
         paths = [self.get_item_path(item) for item in items]
-        encoded_data = json.dumps(paths).encode('utf-8')
-        mime_data.setData("application/x-quicksftp-remote-paths", QByteArray(encoded_data))
+        encoded_data = json.dumps(paths).encode("utf-8")
+        mime_data.setData(
+            "application/x-quicksftp-remote-paths", QByteArray(encoded_data)
+        )
         drag.setMimeData(mime_data)
 
         if len(items) == 1:
@@ -28,9 +31,12 @@ class RemoteDragDropMixin:
             pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
             icon = item.icon()
-            if not icon.isNull(): icon.paint(painter, QRect(0, 5, 20, 20))
+            if not icon.isNull():
+                icon.paint(painter, QRect(0, 5, 20, 20))
             painter.setPen(Qt.GlobalColor.black)
-            painter.drawText(QRect(25, 5, 175, 20), Qt.AlignmentFlag.AlignVCenter, item.text())
+            painter.drawText(
+                QRect(25, 5, 175, 20), Qt.AlignmentFlag.AlignVCenter, item.text()
+            )
             painter.end()
             drag.setPixmap(pixmap)
             drag.setHotSpot(QPoint(10, 15))
@@ -51,13 +57,17 @@ class RemoteDragDropMixin:
         drag.exec(supportedActions)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
+        if event.mimeData().hasUrls() or event.mimeData().hasFormat(
+            "application/x-quicksftp-remote-paths"
+        ):
             event.accept()
         else:
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
+        if event.mimeData().hasUrls() or event.mimeData().hasFormat(
+            "application/x-quicksftp-remote-paths"
+        ):
             event.accept()
         else:
             super().dragMoveEvent(event)
@@ -75,18 +85,25 @@ class RemoteDragDropMixin:
                     dst_path = self.get_item_path(item)
             for url in urls:
                 local_path = url.toLocalFile()
-                if local_path: self.sftp_tab_widget.transport_control_widget.put(local_path, dst_path, 20)
+                if local_path:
+                    self.sftp_tab_widget.transport_control_widget.put(
+                        local_path, dst_path, 20
+                    )
             self.refresh()
 
         elif event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.accept()
             remote_paths = json.loads(
-                event.mimeData().data("application/x-quicksftp-remote-paths").data().decode('utf-8'))
+                event.mimeData()
+                .data("application/x-quicksftp-remote-paths")
+                .data()
+                .decode("utf-8")
+            )
 
             index = self.indexAt(event.position().toPoint())
 
             # --- 【步骤 1：智能获取拖放的目标路径和 UI 节点】 ---
-            dst_path = getattr(self, 'abspath', self.info.getcwd())
+            dst_path = getattr(self, "abspath", self.info.getcwd())
             target_ui_node = None  # None 代表目标是最外层（根目录）
 
             if index.isValid():
@@ -114,7 +131,7 @@ class RemoteDragDropMixin:
                         for moved_item in self.selectedItems():
                             if self.get_item_path(moved_item) == src_path:
                                 source_parent = moved_item.parent()
-                                filename = src_path.split('/')[-1]
+                                filename = src_path.split("/")[-1]
 
                                 # 1. 从原位置"摘取"整行数据 (takeRow 会直接将其从原位置剥离)
                                 if source_parent:
@@ -123,14 +140,21 @@ class RemoteDragDropMixin:
                                     row_items = self.model.takeRow(moved_item.row())
 
                                 # 2. 更新底层绑定的路径数据为新的路径
-                                new_full_path = f"{dst_path}/{filename}".replace("//", "/")
-                                row_items[0].setData(new_full_path, Qt.ItemDataRole.UserRole)
+                                new_full_path = f"{dst_path}/{filename}".replace(
+                                    "//", "/"
+                                )
+                                row_items[0].setData(
+                                    new_full_path, Qt.ItemDataRole.UserRole
+                                )
 
                                 # 3. 将摘下来的行插入到新目标位置
                                 if target_ui_node:
                                     # 如果目标文件夹已经展开/加载过，则直接将节点塞进去显示
                                     first_child = target_ui_node.child(0, 0)
-                                    if first_child and first_child.text() != "加载中...":
+                                    if (
+                                        first_child
+                                        and first_child.text() != "加载中..."
+                                    ):
                                         target_ui_node.appendRow(row_items)
                                 else:
                                     # 如果目标是最外层根目录，直接塞进根节点，并加入缓存
@@ -144,6 +168,8 @@ class RemoteDragDropMixin:
 
                                 break
                     except Exception as e:
-                        QMessageBox.warning(self, "移动失败", f"{src_path} 移动失败:\n{e}")
+                        QMessageBox.warning(
+                            self, "移动失败", f"{src_path} 移动失败:\n{e}"
+                        )
         else:
             super().dropEvent(event)

@@ -19,6 +19,7 @@ class SSHSFTPInfo(QThread):
     负责维护底层的 asyncssh 连接、SFTP 会话和伪终端进程，
     并在独立的 QThread 中运行 asyncio 的事件循环。
     """
+
     sftp: SFTPClient
     connection: SSHClientConnection
     process: SSHClientProcess
@@ -26,15 +27,15 @@ class SSHSFTPInfo(QThread):
     connect_is_ready: bool = False
 
     def __init__(
-            self,
-            host: str,
-            port: int,
-            username: str,
-            password: Optional[str] = None,
-            client_keys: Optional[List[str]] = None,
-            passphrase: Optional[str] = None,
-            verify_host_key: bool = True,
-            startup_commands: Optional[List[str]] = None,
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: Optional[str] = None,
+        client_keys: Optional[List[str]] = None,
+        passphrase: Optional[str] = None,
+        verify_host_key: bool = True,
+        startup_commands: Optional[List[str]] = None,
     ):
         super().__init__()
         self.host = host
@@ -140,10 +141,29 @@ class SSHSFTPInfo(QThread):
             self._host_key_warning = True
             self._host_key_fingerprint = str(e)
             return
+
+        # 真正实现 TOFU (Trust On First Use)：如果用户选择跳过验证，说明已确认信任，此时将密钥写入 ~/.ssh/known_hosts
+        if not self.verify_host_key:
+            server_key = getattr(self.connection, "get_server_host_key", lambda: None)()
+            if server_key:
+                from pathlib import Path
+
+                known_hosts_path = Path.home() / ".ssh" / "known_hosts"
+                known_hosts_path.parent.mkdir(mode=0o700, exist_ok=True)
+                host_str = (
+                    f"[{self.host}]:{self.port}" if self.port != 22 else self.host
+                )
+                with open(known_hosts_path, "ab") as f:
+                    f.write(
+                        f"{host_str} ".encode("utf-8") + server_key.export_public_key()
+                    )
+
+        # 安全加固：连接成功后，立即从内存中擦除明文密码和口令，防止被意外转储或泄露
+        self.password = None
+        self.passphrase = None
+
         self.process = await self.connection.create_process(
-            request_pty=True,
-            term_type='xterm-256color',
-            term_size=(80, 24)
+            request_pty=True, term_type="xterm-256color", term_size=(80, 24)
         )
         self.sftp = await self.connection.start_sftp_client()
 
@@ -158,14 +178,24 @@ class SSHSFTPInfo(QThread):
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return self._wait_future(future)
 
-    def forward_local_port(self, listen_host: str, listen_port: int, remote_host: str, remote_port: int):
+    def forward_local_port(
+        self, listen_host: str, listen_port: int, remote_host: str, remote_port: int
+    ):
         async def _fwd():
-            await self.connection.forward_local_port(listen_host, listen_port, remote_host, remote_port)
+            await self.connection.forward_local_port(
+                listen_host, listen_port, remote_host, remote_port
+            )
+
         self._run_sync(_fwd())
 
-    def forward_remote_port(self, listen_host: str, listen_port: int, local_host: str, local_port: int):
+    def forward_remote_port(
+        self, listen_host: str, listen_port: int, local_host: str, local_port: int
+    ):
         async def _fwd():
-            await self.connection.forward_remote_port(listen_host, listen_port, local_host, local_port)
+            await self.connection.forward_remote_port(
+                listen_host, listen_port, local_host, local_port
+            )
+
         self._run_sync(_fwd())
 
     def is_file(self, path: str) -> bool:
@@ -179,10 +209,10 @@ class SSHSFTPInfo(QThread):
 
     async def _read_file(self, path: str) -> str:
         async with self.sftp.open(path, "rb") as fp:
-            return (await fp.read()).decode('u8')
+            return (await fp.read()).decode("u8")
 
     async def _save_file(self, src: str, text: str) -> None:
-        async with self.sftp.open(src, 'wb') as f:
+        async with self.sftp.open(src, "wb") as f:
             await f.write(text.encode())
 
     def read_file(self, path: str) -> str:
@@ -201,10 +231,16 @@ class SSHSFTPInfo(QThread):
         return self._run_sync(self.sftp.makedirs(path, exist_ok=True))
 
     def copy_file(self, old_path: str, new_path: str) -> None:
-        return self._run_sync(self.connection.run(f"cp -rf {shlex.quote(old_path)} {shlex.quote(new_path)}\n"))
+        return self._run_sync(
+            self.connection.run(
+                f"cp -rf {shlex.quote(old_path)} {shlex.quote(new_path)}\n"
+            )
+        )
 
     def move_file(self, old_path: str, new_path: str) -> None:
-        return self._run_sync(self.connection.run(f"mv {shlex.quote(old_path)} {shlex.quote(new_path)}\n"))
+        return self._run_sync(
+            self.connection.run(f"mv {shlex.quote(old_path)} {shlex.quote(new_path)}\n")
+        )
 
     def rename(self, old_name: str, new_name: str) -> None:
         return self._run_sync(self.sftp.rename(old_name, new_name))
@@ -241,16 +277,16 @@ class SSHSFTPInfo(QThread):
         """
         线程安全地关闭会话，取消所有后台协程，防止 Task destroyed but it is pending 报错
         """
-        if getattr(self, 'loop', None) is None or not self.loop.is_running():
+        if getattr(self, "loop", None) is None or not self.loop.is_running():
             return
 
         async def _cleanup():
             # 1. 正常关闭 SSH/SFTP/Process 等底层连接
-            if getattr(self, 'sftp', None):
+            if getattr(self, "sftp", None):
                 self.sftp.exit()
-            if getattr(self, 'process', None):
+            if getattr(self, "process", None):
                 self.process.close()
-            if getattr(self, 'connection', None):
+            if getattr(self, "connection", None):
                 self.connection.close()
 
             # 2. 找出当前事件循环中除了“清理任务本身”之外的所有挂起的 Task

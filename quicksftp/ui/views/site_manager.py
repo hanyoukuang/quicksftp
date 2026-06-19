@@ -4,9 +4,22 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
-    QFormLayout, QLineEdit, QPushButton, QComboBox, QCheckBox, QStackedWidget,
-    QMessageBox, QFileDialog, QLabel, QInputDialog
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSplitter,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QFormLayout,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QCheckBox,
+    QStackedWidget,
+    QMessageBox,
+    QFileDialog,
+    QLabel,
+    QInputDialog,
 )
 
 from quicksftp.database.user_model import UserInfoDB
@@ -17,6 +30,7 @@ class SiteManagerWidget(QWidget):
     """
     专业的站点管理器：左侧显示站点列表，右侧编辑详情和发起连接
     """
+
     session_requested = Signal(dict)
 
     def __init__(self):
@@ -153,7 +167,7 @@ class SiteManagerWidget(QWidget):
         return stacked
 
     def closeEvent(self, event):
-        if hasattr(self, 'userinfo_db') and self.userinfo_db:
+        if hasattr(self, "userinfo_db") and self.userinfo_db:
             self.userinfo_db.close()
         super().closeEvent(event)
 
@@ -161,7 +175,8 @@ class SiteManagerWidget(QWidget):
         """将当前的站点配置导出为 JSON 文件"""
         # 二次确认：明文密码泄露风险
         reply = QMessageBox.warning(
-            self, "⚠️ 安全警告",
+            self,
+            "⚠️ 安全警告",
             "导出文件将包含明文密码和密钥口令！\n\n"
             "如果此文件泄露，攻击者可以直接获取你的所有 SSH 凭证。\n\n"
             "建议：\n"
@@ -170,12 +185,14 @@ class SiteManagerWidget(QWidget):
             "• 不要通过不安全的渠道分享该文件\n\n"
             "确定要继续导出吗？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(self, "导出站点配置", "sftp_sites.json", "JSON Files (*.json)")
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "导出站点配置", "sftp_sites.json", "JSON Files (*.json)"
+        )
         if not filename:
             return
 
@@ -184,42 +201,46 @@ class SiteManagerWidget(QWidget):
         # 获取并序列化密码登录站点
         # query_all_password 返回: (id, host, port, username, password)
         for r in self.userinfo_db.query_all_password():
-            export_data["passwords"].append({
-                "host": r[1],
-                "port": r[2],
-                "username": r[3],
-                "password": r[4]
-            })
+            export_data["passwords"].append(
+                {"host": r[1], "port": r[2], "username": r[3], "password": r[4]}
+            )
 
         # 获取并序列化私钥登录站点
         # query_all_key 返回: (id, host, port, username, key_path, passphrase)
         for r in self.userinfo_db.query_all_key():
-            export_data["keys"].append({
-                "host": r[1],
-                "port": r[2],
-                "username": r[3],
-                "key_path": r[4],
-                "passphrase": r[5]
-            })
+            export_data["keys"].append(
+                {
+                    "host": r[1],
+                    "port": r[2],
+                    "username": r[3],
+                    "key_path": r[4],
+                    "passphrase": r[5],
+                }
+            )
 
         try:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=4)
-            QMessageBox.information(self, "导出成功",
-                                    "站点配置已成功导出！\n\n"
-                                    "⚠️ 导出的 JSON 文件中包含明文密码，请妥善保管！\n"
-                                    "导出文件路径：" + filename)
+            QMessageBox.information(
+                self,
+                "导出成功",
+                "站点配置已成功导出！\n\n"
+                "⚠️ 导出的 JSON 文件中包含明文密码，请妥善保管！\n"
+                "导出文件路径：" + filename,
+            )
         except Exception as e:
             QMessageBox.warning(self, "导出失败", f"导出过程中发生错误：\n{e}")
 
     def import_sites(self):
         """从 JSON 文件导入站点配置"""
-        filename, _ = QFileDialog.getOpenFileName(self, "导入站点配置", "", "JSON Files (*.json)")
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "导入站点配置", "", "JSON Files (*.json)"
+        )
         if not filename:
             return
 
         try:
-            with open(filename, 'r', encoding='utf-8') as f:
+            with open(filename, "r", encoding="utf-8") as f:
                 import_data = json.load(f)
 
             # 导入密码登录站点
@@ -229,7 +250,7 @@ class SiteManagerWidget(QWidget):
                     p.get("host", ""),
                     p.get("port", 22),
                     p.get("username", ""),
-                    p.get("password", "")
+                    p.get("password", ""),
                 )
 
             # 导入私钥登录站点
@@ -240,13 +261,17 @@ class SiteManagerWidget(QWidget):
                     k.get("port", 22),
                     k.get("username", ""),
                     k.get("key_path", ""),
-                    k.get("passphrase", "")
+                    k.get("passphrase", ""),
                 )
 
             self.load_sites()
-            QMessageBox.information(self, "成功", "站点配置导入成功！相同的配置已被自动去重。")
+            QMessageBox.information(
+                self, "成功", "站点配置导入成功！相同的配置已被自动去重。"
+            )
         except Exception as e:
-            QMessageBox.warning(self, "导入失败", f"导入过程中发生错误（可能文件格式不正确）：\n{e}")
+            QMessageBox.warning(
+                self, "导入失败", f"导入过程中发生错误（可能文件格式不正确）：\n{e}"
+            )
 
     def on_auth_type_changed(self, index):
         self.auth_stacked_widget.setCurrentIndex(index)
@@ -278,7 +303,9 @@ class SiteManagerWidget(QWidget):
         for val in self.userinfo_db.query_all_password():
             display_text = f"{val[1]} ({val[3]})"
             item = QTreeWidgetItem(root_folder, [display_text])
-            item.setData(0, Qt.ItemDataRole.UserRole, {"type": "password", "id": val[0]})
+            item.setData(
+                0, Qt.ItemDataRole.UserRole, {"type": "password", "id": val[0]}
+            )
 
         for val in self.userinfo_db.query_all_key():
             display_text = f"[Key] {val[1]} ({val[3]})"
@@ -367,10 +394,18 @@ class SiteManagerWidget(QWidget):
             else:
                 # 正常更新
                 if auth_type == "password":
-                    self.userinfo_db.update_password(idx, host, port, username, self.password_edit.text())
+                    self.userinfo_db.update_password(
+                        idx, host, port, username, self.password_edit.text()
+                    )
                 else:
-                    self.userinfo_db.update_key(idx, host, port, username, self.key_path_edit.text(),
-                                                self.passphrase_edit.text())
+                    self.userinfo_db.update_key(
+                        idx,
+                        host,
+                        port,
+                        username,
+                        self.key_path_edit.text(),
+                        self.passphrase_edit.text(),
+                    )
         else:
             # 全新插入
             self.insert_new_record(host, port, username, auth_type)
@@ -378,17 +413,29 @@ class SiteManagerWidget(QWidget):
         self.load_sites()
         QMessageBox.information(self, "成功", "站点已保存。")
 
-    def insert_new_record(self, host: str, port: int, username: str, auth_type: str) -> None:
+    def insert_new_record(
+        self, host: str, port: int, username: str, auth_type: str
+    ) -> None:
         if auth_type == "password":
-            self.userinfo_db.insert_password(host, port, username, self.password_edit.text())
+            self.userinfo_db.insert_password(
+                host, port, username, self.password_edit.text()
+            )
         else:
-            self.userinfo_db.insert_key(host, port, username, self.key_path_edit.text(), self.passphrase_edit.text())
+            self.userinfo_db.insert_key(
+                host,
+                port,
+                username,
+                self.key_path_edit.text(),
+                self.passphrase_edit.text(),
+            )
 
     def delete_site(self):
         item = self.site_list.currentItem()
-        if not item: return
+        if not item:
+            return
         data = item.data(0, Qt.ItemDataRole.UserRole)
-        if not data or "type" not in data: return
+        if not data or "type" not in data:
+            return
 
         reply = QMessageBox.question(self, "确认", "确定要删除该站点吗？")
         if reply == QMessageBox.StandardButton.Yes:
@@ -420,17 +467,27 @@ class SiteManagerWidget(QWidget):
             if not password:
                 QMessageBox.warning(self, "警告", "密码不能为空")
                 return
-            self.session_requested.emit({
-                "host": host, "port": port, "username": username, "password": password,
-                "verify_host_key": self.verify_host_checkbox.isChecked()
-            })
+            self.session_requested.emit(
+                {
+                    "host": host,
+                    "port": port,
+                    "username": username,
+                    "password": password,
+                    "verify_host_key": self.verify_host_checkbox.isChecked(),
+                }
+            )
         else:
             key_path = self.key_path_edit.text()
             if not key_path:
                 QMessageBox.warning(self, "警告", "私钥路径不能为空")
                 return
-            self.session_requested.emit({
-                "host": host, "port": port, "username": username,
-                "client_keys": [key_path], "passphrase": self.passphrase_edit.text(),
-                "verify_host_key": self.verify_host_checkbox.isChecked()
-            })
+            self.session_requested.emit(
+                {
+                    "host": host,
+                    "port": port,
+                    "username": username,
+                    "client_keys": [key_path],
+                    "passphrase": self.passphrase_edit.text(),
+                    "verify_host_key": self.verify_host_checkbox.isChecked(),
+                }
+            )

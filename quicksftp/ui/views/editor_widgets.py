@@ -11,8 +11,16 @@ from PySide6.QtCore import QFileSystemWatcher
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
-from PySide6.QtWidgets import QTextEdit, QMessageBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QCheckBox, \
-    QDialogButtonBox
+from PySide6.QtWidgets import (
+    QTextEdit,
+    QMessageBox,
+    QDialog,
+    QVBoxLayout,
+    QGridLayout,
+    QLabel,
+    QCheckBox,
+    QDialogButtonBox,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +37,45 @@ class SimpleHighlighter(QSyntaxHighlighter):
         self.keyword_format.setFontWeight(QFont.Weight.Bold)
 
         keywords = [
-            r'\bdef\b', r'\bclass\b', r'\bimport\b', r'\bfrom\b', r'\bas\b',
-            r'\bif\b', r'\belif\b', r'\belse\b', r'\bwhile\b', r'\bfor\b', r'\bin\b',
-            r'\breturn\b', r'\bpass\b', r'\bbreak\b', r'\bcontinue\b', r'\byield\b',
-            r'\bTrue\b', r'\bFalse\b', r'\bNone\b', r'\band\b', r'\bor\b', r'\bnot\b',
-            r'\btry\b', r'\bexcept\b', r'\bfinally\b', r'\bwith\b', r'\basync\b', r'\bawait\b',
-            r'\bint\b', r'\bfloat\b', r'\bdouble\b', r'\bchar\b', r'\bvoid\b', r'\bbool\b',
-            r'\bauto\b', r'\bconst\b', r'\bstruct\b', r'\bnamespace\b', r'\busing\b'
+            r"\bdef\b",
+            r"\bclass\b",
+            r"\bimport\b",
+            r"\bfrom\b",
+            r"\bas\b",
+            r"\bif\b",
+            r"\belif\b",
+            r"\belse\b",
+            r"\bwhile\b",
+            r"\bfor\b",
+            r"\bin\b",
+            r"\breturn\b",
+            r"\bpass\b",
+            r"\bbreak\b",
+            r"\bcontinue\b",
+            r"\byield\b",
+            r"\bTrue\b",
+            r"\bFalse\b",
+            r"\bNone\b",
+            r"\band\b",
+            r"\bor\b",
+            r"\bnot\b",
+            r"\btry\b",
+            r"\bexcept\b",
+            r"\bfinally\b",
+            r"\bwith\b",
+            r"\basync\b",
+            r"\bawait\b",
+            r"\bint\b",
+            r"\bfloat\b",
+            r"\bdouble\b",
+            r"\bchar\b",
+            r"\bvoid\b",
+            r"\bbool\b",
+            r"\bauto\b",
+            r"\bconst\b",
+            r"\bstruct\b",
+            r"\bnamespace\b",
+            r"\busing\b",
         ]
         self.rules = [(re.compile(kw), self.keyword_format) for kw in keywords]
 
@@ -43,7 +83,7 @@ class SimpleHighlighter(QSyntaxHighlighter):
         self.comment_format = QTextCharFormat()
         self.comment_format.setForeground(QColor("gray"))
         self.comment_format.setFontItalic(True)
-        self.comment_rule = re.compile(r'#.*')
+        self.comment_rule = re.compile(r"#.*")
 
         # 3. 字符串高亮样式 (深绿色)
         self.string_format = QTextCharFormat()
@@ -57,10 +97,14 @@ class SimpleHighlighter(QSyntaxHighlighter):
                 self.setFormat(match.start(), match.end() - match.start(), fmt)
         # 匹配字符串
         for match in self.string_rule.finditer(text):
-            self.setFormat(match.start(), match.end() - match.start(), self.string_format)
+            self.setFormat(
+                match.start(), match.end() - match.start(), self.string_format
+            )
         # 匹配单行注释
         for match in self.comment_rule.finditer(text):
-            self.setFormat(match.start(), match.end() - match.start(), self.comment_format)
+            self.setFormat(
+                match.start(), match.end() - match.start(), self.comment_format
+            )
 
 
 class Edit(QTextEdit):
@@ -77,7 +121,9 @@ class Edit(QTextEdit):
 
     def keyPressEvent(self, event):
         # === 捕获 Ctrl + S 并执行保存逻辑 ===
-        if (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and event.key() == Qt.Key.Key_S:
+        if (
+            event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ) and event.key() == Qt.Key.Key_S:
             self.save_file_action()
         else:
             # 否则执行默认键盘事件
@@ -102,8 +148,12 @@ class Edit(QTextEdit):
         if now_text == self.original_text:
             return
 
-        reply = QMessageBox.question(self, "文件", "文件有改动，是否保存",
-                                     QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+        reply = QMessageBox.question(
+            self,
+            "文件",
+            "文件有改动，是否保存",
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+        )
         if reply == QMessageBox.StandardButton.Ok:
             self.save_file_action()
 
@@ -142,7 +192,7 @@ class ExternalEditorWatcher(QObject):
         local_path = os.path.join(sub_dir, filename)
 
         # 1. 写入本地临时文件
-        with open(local_path, 'w', encoding='utf-8') as f:
+        with open(local_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         # 2. 记录映射关系并加入文件系统监控
@@ -162,12 +212,14 @@ class ExternalEditorWatcher(QObject):
                     return
 
                 # 读取本地最新修改的内容
-                with open(local_path, 'r', encoding='utf-8') as f:
+                with open(local_path, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # 触发底层同步回远端
                 self.info.save_file(remote_path, content)
-                logger.info(f"[{os.path.basename(remote_path)}] 外部修改已自动同步到远端！")
+                logger.info(
+                    f"[{os.path.basename(remote_path)}] 外部修改已自动同步到远端！"
+                )
 
             except Exception as e:
                 logger.error(f"同步远端文件失败: {e}")
@@ -175,7 +227,9 @@ class ExternalEditorWatcher(QObject):
                 # 【核心修复】：许多现代编辑器（如 VSCode, Vim）在保存时是"原子保存"
                 # 即先写入一个新文件，再替换旧文件。这会导致 QFileSystemWatcher 丢失对 inode 的监控。
                 # 解决方案：如果在保存后发现监控丢失，重新将其加回 watcher
-                if local_path not in self.watcher.files() and os.path.exists(local_path):
+                if local_path not in self.watcher.files() and os.path.exists(
+                    local_path
+                ):
                     self.watcher.addPath(local_path)
 
 
@@ -200,7 +254,7 @@ class PermissionDialog(QDialog):
         roles = [
             ("所有者 (Owner)", stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR),
             ("所属组 (Group)", stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP),
-            ("公共 (Others)", stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
+            ("公共 (Others)", stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH),
         ]
 
         # 渲染 3x3 复选框阵列
@@ -217,7 +271,9 @@ class PermissionDialog(QDialog):
         layout.addLayout(grid)
 
         # 确认与取消按钮
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         layout.addWidget(self.buttonBox)
@@ -233,6 +289,3 @@ class PermissionDialog(QDialog):
             if cb.isChecked():
                 new_perms |= flag
         return new_perms
-
-
-

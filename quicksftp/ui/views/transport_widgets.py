@@ -2,9 +2,23 @@
 import os
 
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, \
-    QListWidget, QListWidgetItem, QStyle, QApplication, QSlider, QSpinBox, QFormLayout, QFileDialog, \
-    QMessageBox
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLineEdit,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QStyle,
+    QApplication,
+    QSlider,
+    QSpinBox,
+    QFormLayout,
+    QFileDialog,
+    QMessageBox,
+)
 
 from quicksftp.core.transport import GET, PUT
 from quicksftp.ui.components.progress_bar import ProgressBar
@@ -16,6 +30,7 @@ class TransportTargetWidget(BaseRemoteTreeWidget):
     轻量级的远端目录选择器（用于传输配置弹窗）。
     仅允许查看目录和双击进入下级目录。严禁所有文件篡改操作。
     """
+
     abspath: str = ""
 
     def __init__(self, sftp_tab_widget):
@@ -83,7 +98,7 @@ class SelectRemoteFileWidget(QWidget):
             select_path = f"{self.transport_target_widget.abspath}/{item.text()}"
             return select_path
         path = self.transport_target_widget.abspath
-        if path != '/':
+        if path != "/":
             return path
         return ""
 
@@ -115,7 +130,9 @@ class TransferSetupWidget(QWidget):
         self.coro_num_slider = QSlider(Qt.Orientation.Horizontal)
         self.coro_num_slider.setRange(1, 1000)
         self.coro_num_slider.setValue(20)
-        self.coro_num_slider.valueChanged.connect(lambda v: self.coro_num_label.setText(f"协程数量:{v}"))
+        self.coro_num_slider.valueChanged.connect(
+            lambda v: self.coro_num_label.setText(f"协程数量:{v}")
+        )
 
         self.speed_limit_spin = QSpinBox()
         self.speed_limit_spin.setRange(0, 999999)
@@ -125,7 +142,9 @@ class TransferSetupWidget(QWidget):
         self.src_dir_btn = QPushButton("选择本地文件夹")
         self.dst_btn = QPushButton()
         self.filter_edit = QLineEdit()
-        self.filter_edit.setPlaceholderText("排除模式: *.pyc;__pycache__;.git  (分号分隔)")
+        self.filter_edit.setPlaceholderText(
+            "排除模式: *.pyc;__pycache__;.git  (分号分隔)"
+        )
         self.transport_btn = QPushButton("▶️ 开始传输")
 
         self.init_ui()
@@ -147,7 +166,9 @@ class TransferSetupWidget(QWidget):
         self.setWindowFlags(Qt.WindowType.Tool)
 
         # 绑定通用的远端选择面板回调
-        self.select_remote_file_widget.select_button.clicked.connect(self.on_remote_selected)
+        self.select_remote_file_widget.select_button.clicked.connect(
+            self.on_remote_selected
+        )
         self.transport_btn.clicked.connect(self.start_transport)
 
     def setup_mode(self):
@@ -177,15 +198,18 @@ class TransferSetupWidget(QWidget):
 
     def get_local_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择文件")
-        if path: self.src_edit.setText(path)
+        if path:
+            self.src_edit.setText(path)
 
     def get_local_dir(self):
         path = QFileDialog.getExistingDirectory(self, "选择文件夹")
-        if path: self.dst_edit.setText(path)
+        if path:
+            self.dst_edit.setText(path)
 
     def get_local_dir_for_src(self):
         path = QFileDialog.getExistingDirectory(self, "选择文件夹")
-        if path: self.src_edit.setText(path)
+        if path:
+            self.src_edit.setText(path)
 
     def start_transport(self):
         src, dst = self.src_edit.text(), self.dst_edit.text()
@@ -213,8 +237,12 @@ class TransportControlWidget(QListWidget):
 
     def __init__(self, sftp_tab_widget):
         super().__init__(parent=sftp_tab_widget)
-        self.FILE_ICON = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
-        self.DIR_ICON = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
+        self.FILE_ICON = QApplication.style().standardIcon(
+            QStyle.StandardPixmap.SP_FileIcon
+        )
+        self.DIR_ICON = QApplication.style().standardIcon(
+            QStyle.StandardPixmap.SP_DirIcon
+        )
         self.info = sftp_tab_widget.info
         self.task_list = []
 
@@ -237,16 +265,28 @@ class TransportControlWidget(QListWidget):
         pbar.cancel_requested.connect(task.cancel)
         pbar.del_widget_msg.connect(lambda: self.takeItem(self.row(item)))
         pbar.pause_requested.connect(task.toggle_pause)
-        pbar.retry_requested.connect(lambda: self._retry_task(item, pbar, task, get_fn, put_fn))
+        pbar.retry_requested.connect(
+            lambda: self._retry_task(item, pbar, task, get_fn, put_fn)
+        )
 
-    def get(self, src: str, dst: str, coro_num: int, speed_limit: int = 0, patterns: str = ""):
+    def get(
+        self,
+        src: str,
+        dst: str,
+        coro_num: int,
+        speed_limit: int = 0,
+        patterns: str = "",
+    ):
         self.clear_finish_task()
         icon = self.FILE_ICON if self.info.is_file(src) else self.DIR_ICON
         pbar = ProgressBar(src, "下载", icon)
         task = GET(src, dst, coro_num, speed_limit, self.info)
         task.filter_patterns = patterns
-        self._create_task_ui(pbar, task,
-                             get_fn=lambda: self.get(src, dst, coro_num, speed_limit, patterns))
+        self._create_task_ui(
+            pbar,
+            task,
+            get_fn=lambda: self.get(src, dst, coro_num, speed_limit, patterns),
+        )
         self.task_list.append(task)
         task()
 
@@ -258,13 +298,23 @@ class TransportControlWidget(QListWidget):
         elif put_fn:
             put_fn()
 
-    def put(self, src: str, dst: str, coro_num: int, speed_limit: int = 0, patterns: str = ""):
+    def put(
+        self,
+        src: str,
+        dst: str,
+        coro_num: int,
+        speed_limit: int = 0,
+        patterns: str = "",
+    ):
         self.clear_finish_task()
         icon = self.FILE_ICON if os.path.isfile(src) else self.DIR_ICON
         pbar = ProgressBar(src, "上传", icon)
         task = PUT(src, dst, coro_num, speed_limit, self.info)
         task.filter_patterns = patterns
-        self._create_task_ui(pbar, task,
-                             put_fn=lambda: self.put(src, dst, coro_num, speed_limit, patterns))
+        self._create_task_ui(
+            pbar,
+            task,
+            put_fn=lambda: self.put(src, dst, coro_num, speed_limit, patterns),
+        )
         self.task_list.append(task)
         task()

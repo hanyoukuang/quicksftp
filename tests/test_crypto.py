@@ -1,9 +1,9 @@
 """CryptoManager 单元测试"""
+
 from quicksftp.database.user_model import CryptoManager
 
 
 class TestCryptoManager:
-
     def test_encrypt_decrypt_roundtrip(self, tmp_path):
         key_file = tmp_path / ".secret.key"
         cm = CryptoManager(key_file=str(key_file))

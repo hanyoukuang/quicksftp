@@ -2,8 +2,15 @@ import re
 from typing import List
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton,
-    QComboBox, QTextEdit, QLabel, QDialogButtonBox
+    QDialog,
+    QVBoxLayout,
+    QFormLayout,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QTextEdit,
+    QLabel,
+    QDialogButtonBox,
 )
 
 
@@ -43,7 +50,9 @@ class BatchRenameDialog(QDialog):
         layout.addWidget(QLabel("预览 (原名 → 新名):"))
         layout.addWidget(self._preview_text)
 
-        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btn_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         btn_box.accepted.connect(self.accept)
         btn_box.rejected.connect(self.reject)
         layout.addWidget(btn_box)
@@ -67,7 +76,11 @@ class BatchRenameDialog(QDialog):
         for i, name in enumerate(self._filenames):
             if mode == 0:
                 pattern = self._find_edit.text()
-                repl = self._replace_edit.text().replace("{n}", str(i + 1)).replace("{n:03}", f"{i+1:03d}")
+                repl = (
+                    self._replace_edit.text()
+                    .replace("{n}", str(i + 1))
+                    .replace("{n:03}", f"{i + 1:03d}")
+                )
                 if pattern:
                     try:
                         new_name = re.sub(pattern, repl, name)
@@ -95,4 +108,6 @@ class BatchRenameDialog(QDialog):
     def get_rename_map(self) -> dict:
         if len(self._preview) != len(self._filenames):
             self._do_preview()
-        return {old: new for old, new in zip(self._filenames, self._preview) if old != new}
+        return {
+            old: new for old, new in zip(self._filenames, self._preview) if old != new
+        }

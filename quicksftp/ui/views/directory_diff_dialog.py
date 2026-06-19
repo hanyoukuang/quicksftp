@@ -1,6 +1,11 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
-    QLabel, QHeaderView
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QLabel,
+    QHeaderView,
 )
 from PySide6.QtGui import QColor
 
@@ -8,7 +13,9 @@ from PySide6.QtGui import QColor
 class DirectoryDiffDialog(QDialog):
     """目录比较对话框，比较本地和远端目录的文件差异"""
 
-    def __init__(self, parent=None, local_files: dict = None, remote_files: dict = None):
+    def __init__(
+        self, parent=None, local_files: dict = None, remote_files: dict = None
+    ):
         super().__init__(parent)
         self.setWindowTitle("目录比较")
         self.resize(700, 500)
@@ -26,8 +33,12 @@ class DirectoryDiffDialog(QDialog):
         layout.addLayout(header)
 
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabels(["状态", "文件名", "大小 (本地)", "大小 (远端)", "时间 (远端)"])
-        self._tree.header().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self._tree.setHeaderLabels(
+            ["状态", "文件名", "大小 (本地)", "大小 (远端)", "时间 (远端)"]
+        )
+        self._tree.header().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
         layout.addWidget(self._tree)
 
         self._populate()

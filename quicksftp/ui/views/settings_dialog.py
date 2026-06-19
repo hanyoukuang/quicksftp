@@ -2,13 +2,22 @@ import logging
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QComboBox, QSpinBox, 
-    QFileDialog, QDialogButtonBox, QFormLayout
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QSpinBox,
+    QFileDialog,
+    QDialogButtonBox,
+    QFormLayout,
 )
 
 from quicksftp.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
+
 
 class SettingsDialog(QDialog):
     settings_changed = Signal()
@@ -52,21 +61,25 @@ class SettingsDialog(QDialog):
         layout.addLayout(form_layout)
 
         # Buttons
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
 
     def browse_temp_dir(self):
-        directory = QFileDialog.getExistingDirectory(self, "选择临时下载目录", self.temp_dir_edit.text())
+        directory = QFileDialog.getExistingDirectory(
+            self, "选择临时下载目录", self.temp_dir_edit.text()
+        )
         if directory:
             self.temp_dir_edit.setText(directory)
 
     def load_settings(self):
         settings = SettingsManager.load()
-        
+
         self.temp_dir_edit.setText(settings.get("temp_download_dir", ""))
-        
+
         font_family = settings.get("font_family", "Courier New")
         idx = self.font_combo.findText(font_family)
         if idx >= 0:
@@ -80,7 +93,7 @@ class SettingsDialog(QDialog):
         settings = {
             "temp_download_dir": self.temp_dir_edit.text(),
             "font_family": self.font_combo.currentText(),
-            "font_size": self.size_spin.value()
+            "font_size": self.size_spin.value(),
         }
         SettingsManager.save(settings)
         self.settings_changed.emit()

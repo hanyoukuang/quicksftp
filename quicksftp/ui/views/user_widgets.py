@@ -3,8 +3,17 @@ import logging
 import os
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QComboBox, \
-    QSplitter, QMessageBox, QButtonGroup
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLineEdit,
+    QComboBox,
+    QSplitter,
+    QMessageBox,
+    QButtonGroup,
+)
 
 from quicksftp.ui.components.terminal_widget import SSHPtyWidget
 from quicksftp.ui.views.local_widgets import LocalFileWidget
@@ -19,11 +28,13 @@ logger = logging.getLogger(__name__)
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QSize
 
+
 class ControlWidget(QWidget):
     """
     左侧导航栏
     已彻底解耦，仅负责展示选项，不包含任何外部组件的调用逻辑
     """
+
     currentRowChanged = Signal(int)
 
     def __init__(self, parent=None):
@@ -32,39 +43,43 @@ class ControlWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 10, 0, 0)
         layout.setSpacing(8)
-        
+
         self.btn_group = QButtonGroup(self)
         self.btn_group.setExclusive(True)
         self.btn_group.idClicked.connect(self.currentRowChanged.emit)
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
 
         self._items = [
             ("terminal", "SSH 终端"),
             ("folder", "文件浏览"),
-            ("transfer", "传输管理")
+            ("transfer", "传输管理"),
         ]
-        
+
         for i, (icon_name, tooltip) in enumerate(self._items):
             btn = QPushButton()
             btn.setToolTip(tooltip)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            
+
             layout.addWidget(btn)
             self.btn_group.addButton(btn, i)
-            
+
         layout.addStretch()
-        
+
         # 默认选中第一项并初始化主题
         self.btn_group.button(0).setChecked(True)
-        self.update_theme(True) # Default dark mode
+        self.update_theme(True)  # Default dark mode
 
     def update_theme(self, is_dark: bool):
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         icons_dir = os.path.join(base_dir, "assets", "icons")
         suffix = "_dark.svg" if is_dark else "_light.svg"
-        
+
         for i, (icon_base, tooltip) in enumerate(self._items):
             btn = self.btn_group.button(i)
             icon_path = os.path.join(icons_dir, f"{icon_base}{suffix}")
@@ -73,7 +88,7 @@ class ControlWidget(QWidget):
                 btn.setIconSize(QSize(24, 24))
             else:
                 btn.setText(tooltip[0])
-                
+
             # 极简图标按钮样式
             btn.setStyleSheet(f"""
                 QPushButton {{
@@ -82,11 +97,11 @@ class ControlWidget(QWidget):
                     padding: 10px 0;
                 }}
                 QPushButton:checked {{
-                    border-left: 3px solid {'#007acc' if is_dark else '#4a6da7'};
-                    background: {'#37373d' if is_dark else '#e4e4e4'};
+                    border-left: 3px solid {"#007acc" if is_dark else "#4a6da7"};
+                    background: {"#37373d" if is_dark else "#e4e4e4"};
                 }}
                 QPushButton:hover:!checked {{
-                    background: {'#2b2d2e' if is_dark else '#ebebeb'};
+                    background: {"#2b2d2e" if is_dark else "#ebebeb"};
                 }}
             """)
 
@@ -293,8 +308,12 @@ class UserSFTPWidget(QWidget):
             self.remote_file_widget.refresh()
             for name, item in self.remote_file_widget.all_files_dict.items():
                 idx = item.index()
-                size_item = self.remote_file_widget.model.itemFromIndex(idx.siblingAtColumn(1))
-                time_item = self.remote_file_widget.model.itemFromIndex(idx.siblingAtColumn(3))
+                size_item = self.remote_file_widget.model.itemFromIndex(
+                    idx.siblingAtColumn(1)
+                )
+                time_item = self.remote_file_widget.model.itemFromIndex(
+                    idx.siblingAtColumn(3)
+                )
                 remote_files[name] = {
                     "size": size_item.text() if size_item else "",
                     "time": time_item.text() if time_item else "",
@@ -327,7 +346,9 @@ class TerminalPanel(QWidget):
         self.snippets_widget = QuickSnippetsWidget(site_id)
 
         # 4. 将命令写入到终端输入流
-        self.snippets_widget.command_triggered.connect(self.ssh_pty_widget.bridge.on_input)
+        self.snippets_widget.command_triggered.connect(
+            self.ssh_pty_widget.bridge.on_input
+        )
 
         self.splitter.addWidget(self.ssh_pty_widget)
         self.splitter.addWidget(self.snippets_widget)
@@ -336,6 +357,3 @@ class TerminalPanel(QWidget):
         self.splitter.setStretchFactor(1, 1)
 
         layout.addWidget(self.splitter)
-
-
-
