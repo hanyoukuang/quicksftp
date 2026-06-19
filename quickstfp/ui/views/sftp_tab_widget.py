@@ -87,12 +87,16 @@ class SFTPTabWidget(QWidget):
                     self.window().tab_widget.indexOf(self),
                     self.window().tab_widget.tabText(self.window().tab_widget.indexOf(self)).replace("🔴", "🟢"))
                 self._health_status = True
+                if self.window().tab_widget.currentWidget() == self:
+                    self.window()._on_tab_changed(self.window().tab_widget.indexOf(self))
         except Exception:
             if self._health_status:
                 idx = self.window().tab_widget.indexOf(self)
                 name = self.window().tab_widget.tabText(idx).replace("🟢", "")
                 self.window().tab_widget.setTabText(idx, f"🔴 {name}")
                 self._health_status = False
+                if self.window().tab_widget.currentWidget() == self:
+                    self.window()._on_tab_changed(self.window().tab_widget.indexOf(self))
 
     def init_ui(self):
         # 组装面板

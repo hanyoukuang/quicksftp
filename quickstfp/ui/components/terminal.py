@@ -1,5 +1,5 @@
 import pyte
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtWidgets import QWidget, QApplication, QScrollBar
 from PySide6.QtGui import QPainter, QFont, QFontMetrics, QColor, QFontDatabase, QKeySequence
 from PySide6.QtCore import Qt, QRect, Signal
 
@@ -11,11 +11,13 @@ class PyqTerminal(QWidget):
         super().__init__(parent)
         self.rows = rows
         self.cols = cols
+        self.padding = 8
+        self.scroll_offset = 0
         
         self.setFocusPolicy(Qt.WheelFocus) # Allow widget to receive keyboard events
         
         # Setup Pyte
-        self.screen = pyte.Screen(self.cols, self.rows)
+        self.screen = pyte.HistoryScreen(self.cols, self.rows, history=10000)
         self.stream = pyte.Stream(self.screen)
         
         # Setup Font
@@ -49,11 +51,17 @@ class PyqTerminal(QWidget):
         self.selection_start = None # (row, col)
         self.selection_end = None   # (row, col)
         self._last_mouse_grid = None
+        self._scroll_accum_y = 0
         
         self._raw_buffer = "" # For OSC 52 interception
         
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.setMouseTracking(True) # Track mouse for TUI motion events
+
+        # Scrollbar
+        self.scrollbar = QScrollBar(Qt.Vertical, self)
+        self.scrollbar.valueChanged.connect(self._on_scroll_bar)
+        self.scrollbar.hide()
 
     def _update_metrics(self):
         self._font_cache.clear()
@@ -61,7 +69,7 @@ class PyqTerminal(QWidget):
         self.char_width = self.metrics.horizontalAdvance('W')
         self.char_height = self.metrics.height()
         self.ascent = self.metrics.ascent()
-        self.setMinimumSize(self.cols * self.char_width, self.rows * self.char_height)
+        self.setMinimumSize(self.cols * self.char_width + 2 * self.padding, self.rows * self.char_height + 2 * self.padding)
 
     def write(self, data: str):
         self._raw_buffer += data
@@ -115,10 +123,43 @@ class PyqTerminal(QWidget):
                 self._raw_buffer = self._raw_buffer[end_idx + term_len:]
 
         if self.screen.dirty:
-            for y in self.screen.dirty:
-                rect = QRect(0, y * self.char_height, self.width(), self.char_height)
-                self.update(rect)
+            if self.scroll_offset > 0:
+                self.scroll_offset = 0
+                self._update_scrollbar()
+                self.update()
+            else:
+                for y in self.screen.dirty:
+                    rect = QRect(self.padding, y * self.char_height + self.padding, self.width() - 2 * self.padding, self.char_height)
+                    self.update(rect)
             self.screen.dirty.clear()
+            self._update_scrollbar()
+
+    def _update_scrollbar(self):
+        total = len(self.screen.history.top)
+        if total == 0:
+            self.scrollbar.hide()
+            return
+        self.scrollbar.show()
+        # Disconnect momentarily to avoid recursive updates
+        self.scrollbar.blockSignals(True)
+        self.scrollbar.setRange(0, total)
+        self.scrollbar.setPageStep(self.rows)
+        self.scrollbar.setValue(total - self.scroll_offset)
+        self.scrollbar.blockSignals(False)
+
+    def _on_scroll_bar(self, val):
+        total = len(self.screen.history.top)
+        self.scroll_offset = total - val
+        self.update()
+
+    def _scroll_history(self, delta):
+        total = len(self.screen.history.top)
+        if total == 0: return
+        self.scroll_offset = max(0, min(total, self.scroll_offset + delta))
+        self.scrollbar.blockSignals(True)
+        self.scrollbar.setValue(total - self.scroll_offset)
+        self.scrollbar.blockSignals(False)
+        self.update()
 
     def clear(self):
         self.screen.reset()
@@ -126,11 +167,12 @@ class PyqTerminal(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self.scrollbar.setGeometry(self.width() - 12, 0, 12, self.height())
         self._recalculate_size()
 
     def _recalculate_size(self):
-        new_cols = self.width() // self.char_width
-        new_rows = self.height() // self.char_height
+        new_cols = (self.width() - 2 * self.padding) // self.char_width
+        new_rows = (self.height() - 2 * self.padding) // self.char_height
         
         if new_cols != self.cols or new_rows != self.rows:
             new_cols = max(1, new_cols)
@@ -166,24 +208,49 @@ class PyqTerminal(QWidget):
         track_press = (1000 << 5) in modes or (1002 << 5) in modes or (1003 << 5) in modes
         sgr_mode    = (1006 << 5) in modes
         
-        if track_press:
-            delta = event.angleDelta().y()
-            cb = 64 if delta > 0 else 65
-            row, col = self._mouse_to_grid(event.position())
-            cx, cy = col + 1, row + 1
-            if sgr_mode:
-                self.keyPressed.emit(f"\x1b[<{cb};{cx};{cy}M")
-            else:
-                self.keyPressed.emit(f"\x1b[M{chr(32 + cb)}{chr(32 + cx)}{chr(32 + cy)}")
+        delta = event.angleDelta().y()
+        if delta == 0:
             event.accept()
             return
 
-        super().wheelEvent(event)
+        if not track_press:
+            self._scroll_accum_y += delta
+            step = 30
+            while self._scroll_accum_y >= step:
+                self._scroll_accum_y -= step
+                self._scroll_history(1)
+            while self._scroll_accum_y <= -step:
+                self._scroll_accum_y += step
+                self._scroll_history(-1)
+            event.accept()
+            return
+                
+        self._scroll_accum_y += delta
+        # Accumulate delta for smooth trackpad scrolling (standard wheel click is ~120)
+        step = 60
+        
+        row, col = self._mouse_to_grid(event.position())
+        cx, cy = col + 1, row + 1
+        
+        while self._scroll_accum_y >= step:
+            self._scroll_accum_y -= step
+            cb = 64 # UP
+            if sgr_mode: self.keyPressed.emit(f"\x1b[<{cb};{cx};{cy}M")
+            else: self.keyPressed.emit(f"\x1b[M{chr(32 + cb)}{chr(32 + cx)}{chr(32 + cy)}")
+            
+        while self._scroll_accum_y <= -step:
+            self._scroll_accum_y += step
+            cb = 65 # DOWN
+            if sgr_mode: self.keyPressed.emit(f"\x1b[<{cb};{cx};{cy}M")
+            else: self.keyPressed.emit(f"\x1b[M{chr(32 + cb)}{chr(32 + cx)}{chr(32 + cy)}")
+            
+        event.accept()
+        return
 
     # --- Mouse and Selection ---
     def _mouse_to_grid(self, pos):
-        col = int(pos.x() // self.char_width)
-        row = int(pos.y() // self.char_height)
+        col = int((pos.x() - self.padding) // self.char_width)
+        row = int((pos.y() - self.padding) // self.char_height)
         return max(0, min(self.rows - 1, row)), max(0, min(self.cols - 1, col))
 
     def _send_mouse_event(self, event, is_press=False, is_release=False, is_move=False):
@@ -298,8 +365,19 @@ class PyqTerminal(QWidget):
         if not sel_range: return
         (r1, c1), (r2, c2) = sel_range
         lines = []
+        N = len(self.screen.history.top)
+        
         for r in range(r1, r2 + 1):
-            line = self.screen.buffer[r]
+            L = N - self.scroll_offset + r
+            if L < 0:
+                continue # Out of bounds
+            if L < N:
+                line = self.screen.history.top[L]
+            elif L - N < self.rows:
+                line = self.screen.buffer[L - N]
+            else:
+                continue # Out of bounds
+                
             start_c = c1 if r == r1 else 0
             end_c = c2 if r == r2 else self.cols - 1
             
@@ -385,12 +463,19 @@ class PyqTerminal(QWidget):
         sel_range = self._get_selection_range()
         
         # Calculate dirty rows based on clipping rect
-        min_y = max(0, clip_rect.top() // self.char_height)
-        max_y = min(self.rows - 1, (clip_rect.bottom() + self.char_height - 1) // self.char_height)
+        min_y = max(0, (clip_rect.top() - self.padding) // self.char_height)
+        max_y = min(self.rows - 1, (clip_rect.bottom() - self.padding + self.char_height - 1) // self.char_height)
+        
+        N = len(self.screen.history.top)
         
         # Pass 1: Draw all backgrounds (Batched!)
         for y in range(min_y, max_y + 1):
-            line = self.screen.buffer[y]
+            L = N - self.scroll_offset + y
+            if L < N:
+                line = self.screen.history.top[L]
+            else:
+                line = self.screen.buffer[L - N]
+                
             start_x = 0
             current_bg = None
             
@@ -405,24 +490,29 @@ class PyqTerminal(QWidget):
                     
                 if bg_color != current_bg:
                     if current_bg is not None and current_bg != self.default_bg:
-                        painter.fillRect(QRect(start_x * self.char_width, y * self.char_height, (x - start_x) * self.char_width, self.char_height), current_bg)
+                        painter.fillRect(QRect(self.padding + start_x * self.char_width, self.padding + y * self.char_height, (x - start_x) * self.char_width, self.char_height), current_bg)
                     start_x = x
                     current_bg = bg_color
                     
             if current_bg is not None and current_bg != self.default_bg:
-                painter.fillRect(QRect(start_x * self.char_width, y * self.char_height, (self.cols - start_x) * self.char_width, self.char_height), current_bg)
+                painter.fillRect(QRect(self.padding + start_x * self.char_width, self.padding + y * self.char_height, (self.cols - start_x) * self.char_width, self.char_height), current_bg)
                     
         # Pass 2: Draw all foreground text
         last_pen_color = None
         last_font_key = None
         
         for y in range(min_y, max_y + 1):
-            line = self.screen.buffer[y]
+            L = N - self.scroll_offset + y
+            if L < N:
+                line = self.screen.history.top[L]
+            else:
+                line = self.screen.buffer[L - N]
+                
             for x in range(self.cols):
                 char = line[x]
                 
                 if char.data != ' ' and char.data != '':
-                    rect = QRect(x * self.char_width, y * self.char_height, self.char_width, self.char_height)
+                    rect = QRect(self.padding + x * self.char_width, self.padding + y * self.char_height, self.char_width, self.char_height)
                     
                     fg_color = self._get_color(char.fg, is_bg=False)
                     if char.reverse: fg_color = self._get_color(char.bg, is_bg=True)
@@ -469,6 +559,6 @@ class PyqTerminal(QWidget):
                         painter.drawText(rect.left(), rect.top() + self.ascent, char.data)
                     
         cursor = self.screen.cursor
-        if not cursor.hidden and min_y <= cursor.y <= max_y and 0 <= cursor.x < self.cols:
-            cursor_rect = QRect(cursor.x * self.char_width, cursor.y * self.char_height, self.char_width, self.char_height)
+        if self.scroll_offset == 0 and not cursor.hidden and min_y <= cursor.y <= max_y and 0 <= cursor.x < self.cols:
+            cursor_rect = QRect(self.padding + cursor.x * self.char_width, self.padding + cursor.y * self.char_height, self.char_width, self.char_height)
             painter.fillRect(cursor_rect, QColor(255, 255, 255, 128))

@@ -17,6 +17,9 @@ from quickstfp.ui.views.directory_diff_dialog import DirectoryDiffDialog
 logger = logging.getLogger(__name__)
 
 
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize
+
 class ControlWidget(QWidget):
     """
     左侧导航栏
@@ -26,49 +29,68 @@ class ControlWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self.setFixedWidth(100)  # 保持较窄以扩大终端显示范围
+        self.setFixedWidth(48)  # 极其紧凑的 PyCharm/VSCode 风格侧边栏
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 5, 0, 0)
-        layout.setSpacing(2)
+        layout.setContentsMargins(0, 10, 0, 0)
+        layout.setSpacing(8)
         
         self.btn_group = QButtonGroup(self)
         self.btn_group.setExclusive(True)
         self.btn_group.idClicked.connect(self.currentRowChanged.emit)
 
-        items = ["💻 终端", "📂 文件", "📤 传输"]
-        tooltips = ["SSH 终端", "文件浏览", "传输管理"]
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        icons_dir = os.path.join(base_dir, "assets", "icons")
+
+        self._items = [
+            ("terminal", "SSH 终端"),
+            ("folder", "文件浏览"),
+            ("transfer", "传输管理")
+        ]
         
-        for i, (text, tooltip) in enumerate(zip(items, tooltips)):
-            btn = QPushButton(text)
+        for i, (icon_name, tooltip) in enumerate(self._items):
+            btn = QPushButton()
             btn.setToolTip(tooltip)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            # 扁平化风格，图标文字居左，类似 PyCharm 侧边栏
-            btn.setStyleSheet("""
-                QPushButton {
-                    text-align: left;
-                    padding: 8px 12px;
-                    border: none;
-                    background: transparent;
-                    color: #e0e0e0;
-                    font-size: 13px;
-                }
-                QPushButton:checked {
-                    background: #4a6da7;
-                    border-left: 3px solid #8ab4f8;
-                    font-weight: bold;
-                }
-                QPushButton:hover:!checked {
-                    background: #444;
-                }
-            """)
+            
             layout.addWidget(btn)
             self.btn_group.addButton(btn, i)
             
         layout.addStretch()
         
-        # 默认选中第一项
+        # 默认选中第一项并初始化主题
         self.btn_group.button(0).setChecked(True)
+        self.update_theme(True) # Default dark mode
+
+    def update_theme(self, is_dark: bool):
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        icons_dir = os.path.join(base_dir, "assets", "icons")
+        suffix = "_dark.svg" if is_dark else "_light.svg"
+        
+        for i, (icon_base, tooltip) in enumerate(self._items):
+            btn = self.btn_group.button(i)
+            icon_path = os.path.join(icons_dir, f"{icon_base}{suffix}")
+            if os.path.exists(icon_path):
+                btn.setIcon(QIcon(icon_path))
+                btn.setIconSize(QSize(24, 24))
+            else:
+                btn.setText(tooltip[0])
+                
+            # 极简图标按钮样式
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    border: none;
+                    background: transparent;
+                    padding: 10px 0;
+                }}
+                QPushButton:checked {{
+                    border-left: 3px solid {'#007acc' if is_dark else '#4a6da7'};
+                    background: {'#37373d' if is_dark else '#e4e4e4'};
+                }}
+                QPushButton:hover:!checked {{
+                    background: {'#2b2d2e' if is_dark else '#ebebeb'};
+                }}
+            """)
 
     def setCurrentRow(self, row: int):
         btn = self.btn_group.button(row)

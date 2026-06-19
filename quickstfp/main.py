@@ -3,7 +3,7 @@ import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox, QLabel
 
 from quickstfp.ui.views.sftp_tab_widget import SFTPTabWidget
 from quickstfp.ui.views.site_manager import SiteManagerWidget
@@ -27,7 +27,13 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)  # 允许标签页关闭
         self.tab_widget.tabCloseRequested.connect(self.close_tab)  # 绑定关闭事件
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.setCentralWidget(self.tab_widget)
+        
+        # 2. 初始化底部状态栏
+        self.status_bar = self.statusBar()
+        self.status_label = QLabel(" ⚡ 准备就绪 ")
+        self.status_bar.addWidget(self.status_label)
 
         # 2. 顶部工具栏 (随时唤出站点管理器)
         toolbar = self.addToolBar("主控制栏")
@@ -53,6 +59,19 @@ class MainWindow(QMainWindow):
 
         self.site_manager = None
         self._port_fwd_dialog = None
+
+    def _on_tab_changed(self, index: int):
+        if index == -1:
+            self.status_label.setText(" ⚡ 准备就绪 - 没有打开的连接 ")
+            return
+            
+        widget = self.tab_widget.widget(index)
+        if hasattr(widget, 'info'):
+            host = widget._host
+            user = widget._username
+            port = widget._port
+            state = "🟢 已连接" if getattr(widget, '_health_status', True) else "🔴 连接断开"
+            self.status_label.setText(f" {state} | {user}@{host}:{port} ")
 
     def _open_port_forward(self):
         current = self.tab_widget.currentWidget()
@@ -88,27 +107,115 @@ class MainWindow(QMainWindow):
         self._apply_theme()
 
     def _apply_theme(self):
+        # Update control widgets in all tabs
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if hasattr(tab, 'control_widget') and hasattr(tab.control_widget, 'update_theme'):
+                tab.control_widget.update_theme(self._dark_mode)
+                
         if not self._dark_mode:
-            self.setStyleSheet("")
+            # 明确设置亮色模式样式
+            self.setStyleSheet("""
+                QMainWindow, QWidget { background-color: #f5f5f5; color: #333; }
+                QTabWidget::pane { background: #ffffff; border: none; border-top: 1px solid #ddd; }
+                QTabBar { background: #ececec; }
+                QTabBar::tab { background: #ececec; color: #666; padding: 8px 16px; border: none; border-right: 1px solid #ddd; }
+                QTabBar::tab:selected { background: #ffffff; color: #000; border-top: 2px solid #4a6da7; border-right: 1px solid #ddd; border-left: 1px solid #ddd; }
+                QTabBar::tab:hover:!selected { background: #e4e4e4; }
+                QToolBar { background: #ececec; border: none; border-bottom: 1px solid #ddd; padding: 2px; }
+                QStatusBar { background: #ececec; color: #333; border-top: 1px solid #ddd; }
+                QStatusBar QLabel { padding: 0 5px; }
+                QLineEdit, QComboBox, QSpinBox { background: #fff; color: #333; border: 1px solid #aaa; border-radius: 2px; padding: 2px; }
+                QPushButton { background: #e0e0e0; color: #333; padding: 4px 10px; border-radius: 3px; border: 1px solid #ccc; }
+                QPushButton:hover { background: #d0d0d0; }
+                QListWidget, QTreeView { background: #fff; color: #333; border: none; }
+                QListWidget::item:selected, QTreeView::item:selected { background: #4a6da7; color: #fff; }
+                QHeaderView::section { background: #ececec; color: #333; border: none; border-right: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 4px; }
+                QProgressBar { background: #fff; border: 1px solid #ccc; text-align: center; }
+                QProgressBar::chunk { background: #4a9; }
+                QSplitter::handle { background: transparent; }
+                QMenu { background: #f5f5f5; color: #333; border: 1px solid #ccc; }
+                QMenu::item:selected { background: #4a6da7; color: #fff; }
+                QDialog { background: #f5f5f5; }
+                
+                /* Light Mode Scrollbar */
+                QScrollBar:vertical { border: none; background: transparent; width: 10px; margin: 0px; }
+                QScrollBar::handle:vertical { background: rgba(0,0,0,0.2); min-height: 20px; border-radius: 5px; }
+                QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.4); }
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+                
+                QScrollBar:horizontal { border: none; background: transparent; height: 10px; margin: 0px; }
+                QScrollBar::handle:horizontal { background: rgba(0,0,0,0.2); min-width: 20px; border-radius: 5px; }
+                QScrollBar::handle:horizontal:hover { background: rgba(0,0,0,0.4); }
+                QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; }
+                QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: transparent; }
+            """)
             return
+
         self.setStyleSheet("""
-            QMainWindow, QWidget { background-color: #2b2b2b; color: #e0e0e0; }
-            QTabWidget::pane { background: #333; border: 1px solid #555; }
-            QTabBar::tab { background: #3c3c3c; color: #ccc; padding: 5px 12px; }
-            QTabBar::tab:selected { background: #555; color: #fff; }
-            QToolBar { background: #333; border: none; }
-            QLineEdit, QComboBox, QSpinBox { background: #3c3c3c; color: #fff; border: 1px solid #555; }
-            QPushButton { background: #444; color: #fff; padding: 4px 10px; border-radius: 3px; }
-            QPushButton:hover { background: #555; }
-            QListWidget, QTreeView { background: #333; color: #e0e0e0; }
-            QListWidget::item:selected, QTreeView::item:selected { background: #4a6da7; }
-            QHeaderView::section { background: #3c3c3c; color: #ccc; border: 1px solid #555; }
+            QMainWindow, QWidget { background-color: #1e1e1e; color: #cccccc; }
+            QTabWidget::pane { background: #1e1e1e; border: none; border-top: 1px solid #333; }
+            QTabBar { background: #252526; }
+            QTabBar::tab { background: #2d2d2d; color: #969696; padding: 8px 16px; border: none; border-right: 1px solid #252526; }
+            QTabBar::tab:selected { background: #1e1e1e; color: #ffffff; border-top: 2px solid #007acc; }
+            QTabBar::tab:hover:!selected { background: #2b2d2e; }
+            QToolBar { background: #252526; border: none; border-bottom: 1px solid #333; padding: 2px; }
+            QStatusBar { background: #007acc; color: #ffffff; border: none; }
+            QStatusBar QLabel { padding: 0 5px; }
+            QLineEdit, QComboBox, QSpinBox { background: #3c3c3c; color: #fff; border: 1px solid #555; border-radius: 2px; padding: 2px; }
+            QPushButton { background: transparent; color: #cccccc; padding: 4px 10px; border-radius: 3px; border: 1px solid #3c3c3c; }
+            QPushButton:hover { background: #3c3c3c; color: #ffffff; }
+            QListWidget, QTreeView { background: #1e1e1e; color: #cccccc; border: none; }
+            QListWidget::item:selected, QTreeView::item:selected { background: #37373d; }
+            QHeaderView::section { background: #252526; color: #cccccc; border: none; border-right: 1px solid #333; border-bottom: 1px solid #333; padding: 4px; }
             QProgressBar { background: #3c3c3c; border: 1px solid #555; text-align: center; }
-            QProgressBar::chunk { background: #4a9; }
-            QSplitter::handle { background: #555; }
-            QMenu { background: #333; color: #e0e0e0; border: 1px solid #555; }
-            QMenu::item:selected { background: #4a6da7; }
-            QDialog { background: #2b2b2b; }
+            QProgressBar::chunk { background: #007acc; }
+            QSplitter::handle { background: transparent; }
+            QMenu { background: #252526; color: #cccccc; border: 1px solid #454545; }
+            QMenu::item:selected { background: #094771; }
+            QDialog { background: #252526; }
+            
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 10px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255,255,255,0.1);
+                min-height: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255,255,255,0.2);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+            QScrollBar:horizontal {
+                border: none;
+                background: transparent;
+                height: 10px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: rgba(255,255,255,0.1);
+                min-width: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: rgba(255,255,255,0.2);
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+                background: transparent;
+            }
         """)
 
         # 启动时自动打开一次站点管理器
