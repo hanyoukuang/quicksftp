@@ -43,7 +43,6 @@ class SSHSFTPInfo(QThread):
         self.password = password
         self.client_keys = client_keys
         self.passphrase = passphrase
-        self.banner_msg = ""
         self.verify_host_key = verify_host_key
         self.startup_commands = startup_commands or []
 

@@ -81,13 +81,13 @@ class ImmediateSchedulerPool:
                 is_assigned_big = False
 
             size, coro, _ = task_data
-            task = asyncio.create_task(self._worker_wrapper(coro, size, is_assigned_big))
+            task = asyncio.create_task(self._worker_wrapper(coro, size))
             self.running_tasks.add(task)
 
             if is_assigned_big:
                 self._big_task_ref = task
 
-    async def _worker_wrapper(self, coro: Coroutine, size: int, is_big: bool):
+    async def _worker_wrapper(self, coro: Coroutine, size: int):
         try:
             await coro
         except asyncio.CancelledError:

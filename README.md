@@ -35,12 +35,13 @@ uv run quickstfp
 
 **发布到 GitHub 前请确保：**
 
-1. **`.secret.key` 文件不会被提交**
-   - 该文件是用于加密 SSH 密码的 Fernet 对称密钥
-   - 已加入 `.gitignore`，如果密钥文件已存在，请手动使用 `git rm --cached .secret.key` 从跟踪中移除
+1. **不要泄露凭证文件**
+   - `userinfo.db` 和 `quick_snippets_v2.json` 分别存储了加密后的 SSH 凭证和快捷命令配置，**已加入 `.gitignore`**，请勿提交。
 
-2. **`userinfo.db` 和 `quick_snippets_v2.json` 不会被提交**
-   - 这些文件分别存储加密后的 SSH 凭证和快捷命令配置
-   - 同样已加入 `.gitignore`
+2. **密钥安全与 Keyring 集成**
+   - 本项目现在默认将**用于对称加密的主密钥**存储在操作系统的原生安全凭证管理库中（例如 macOS 的 Keychain、Windows 的 Credential Manager）。
+   - 这大大提升了本地数据的安全性。如果您在无桌面的纯命令行环境运行，程序会自动降级并在本地生成 `.secret.key` 密钥文件。
+   - 如果您使用的是旧版本的 `.secret.key`，程序首次启动时会自动将其迁移至 Keyring，并将原文件重命名为 `.secret.key.bak`。请勿提交此备份文件。
 
-3. **首次运行** 时程序会自动生成新的 `.secret.key`，但之前保存的所有站点凭证将因密钥变更而失效，需要重新添加站点。
+3. **重新生成密钥的后果**
+   - 无论是重置 Keyring 中的密钥，还是删除了本地的 `.secret.key` 文件，程序会自动生成新密钥。但这会导致**之前保存的所有站点凭证解密失败失效**，需要重新添加站点。

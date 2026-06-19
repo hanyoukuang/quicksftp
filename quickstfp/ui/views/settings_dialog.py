@@ -1,9 +1,8 @@
 import logging
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFontDatabase, QFont
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-    QLineEdit, QPushButton, QComboBox, QSpinBox, 
+    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QComboBox, QSpinBox, 
     QFileDialog, QDialogButtonBox, QFormLayout
 )
 

@@ -2,8 +2,8 @@ import re
 from typing import List
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, QPushButton,
-    QComboBox, QTextEdit, QLabel, QDialogButtonBox, QMessageBox
+    QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton,
+    QComboBox, QTextEdit, QLabel, QDialogButtonBox
 )
 
 

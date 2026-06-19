@@ -2,8 +2,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QHBoxLayout, QLineEdit, QPushButton,
-    QComboBox, QSpinBox, QDialogButtonBox, QFileDialog, QMessageBox, QLabel,
-    QTextEdit
+    QComboBox, QDialogButtonBox, QFileDialog, QMessageBox, QTextEdit
 )
 
 import asyncssh

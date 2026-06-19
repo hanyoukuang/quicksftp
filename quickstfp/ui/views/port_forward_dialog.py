@@ -1,4 +1,3 @@
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, QPushButton,
     QComboBox, QSpinBox, QTreeWidget, QTreeWidgetItem, QLabel, QHeaderView

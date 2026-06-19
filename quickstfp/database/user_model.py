@@ -4,6 +4,7 @@ import sqlite3
 from typing import List, Tuple, Optional
 
 from cryptography.fernet import Fernet
+import keyring
 
 from quickstfp.core.config import get_data_path
 
@@ -11,24 +12,58 @@ from quickstfp.core.config import get_data_path
 class CryptoManager:
     """
     轻量级加密管理器。
-    负责在本地生成并维护唯一的对称加密秘钥文件，提供字符串的透明加解密。
+    默认情况下，在操作系统的原生安全凭证库(Keychain/Credential Manager)中存储和读取对称加密秘钥。
+    如果指定了 key_file，则只使用该文件（通常用于测试）。
+    提供字符串的透明加解密。
     """
 
     def __init__(self, key_file: str = None):
+        self._service_name = "quicksftp"
+        self._username = "master_key"
+        self._use_keyring = key_file is None
         self.key_file = key_file or get_data_path('.secret.key')
         self.key = self._load_or_generate_key()
         self.cipher = Fernet(self.key)
 
     def _load_or_generate_key(self) -> bytes:
-        # 如果当前目录下存在秘钥文件则直接读取，否则生成一个新的并保存
+        if self._use_keyring:
+            # 1. 尝试从操作系统的 Keyring 读取
+            try:
+                key_str = keyring.get_password(self._service_name, self._username)
+                if key_str:
+                    return key_str.encode('utf-8')
+            except Exception as e:
+                # 某些环境下 keyring 可能不可用，降级使用文件
+                print(f"Warning: Failed to access keyring: {e}")
+                self._use_keyring = False
+
+        # 2. 从文件读取 (可能是旧版本的数据，或者测试模式，或者 keyring 不可用)
         if os.path.exists(self.key_file):
             with open(self.key_file, 'rb') as f:
-                return f.read()
-        else:
-            key = Fernet.generate_key()
-            with open(self.key_file, 'wb') as f:
-                f.write(key)
+                key = f.read()
+            # 迁移到 keyring (如果启用了 keyring 且之前是文件存储)
+            if self._use_keyring:
+                try:
+                    keyring.set_password(self._service_name, self._username, key.decode('utf-8'))
+                    # 迁移完成后备份并隐藏旧文件
+                    os.rename(self.key_file, self.key_file + ".bak")
+                except Exception as e:
+                    print(f"Warning: Failed to migrate key to keyring: {e}")
             return key
+
+        # 3. 如果都没有，生成一个新的 key
+        key = Fernet.generate_key()
+        if self._use_keyring:
+            try:
+                keyring.set_password(self._service_name, self._username, key.decode('utf-8'))
+                return key
+            except Exception as e:
+                print(f"Warning: Failed to save key to keyring: {e}")
+
+        # 4. 降级保存到文件
+        with open(self.key_file, 'wb') as f:
+            f.write(key)
+        return key
 
     def encrypt(self, plain_text: str) -> str:
         if not plain_text:

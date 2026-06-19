@@ -12,6 +12,7 @@ requires-python = ">=3.12"
 dependencies = [
     "asyncssh>=2.21.1",
     "cryptography>=41.0.0",
+    "keyring>=25.7.0",
     "pyside6>=6.11.1",
     "pyte>=0.8.2",
 ]

@@ -1,6 +1,4 @@
 """CryptoManager 单元测试"""
-import os
-import pytest
 from quickstfp.database.user_model import CryptoManager
 
 

@@ -1,9 +1,9 @@
 # ui/views/remote_drag_drop.py
 import json
 
-from PySide6.QtCore import Qt, QMimeData, QByteArray, QRect, QPoint, QModelIndex
+from PySide6.QtCore import Qt, QMimeData, QByteArray, QRect, QPoint
 from PySide6.QtGui import QDrag, QPixmap, QPainter
-from PySide6.QtWidgets import QMessageBox, QAbstractItemView
+from PySide6.QtWidgets import QMessageBox
 
 
 class RemoteDragDropMixin:

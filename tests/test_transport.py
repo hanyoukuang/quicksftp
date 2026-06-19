@@ -1,6 +1,6 @@
 """Transport 模块单元测试"""
 import pytest
-from quickstfp.core.transport import SpeedLimiter, ImmediateSchedulerPool, ProgressTracker, Transport, GET, PUT
+from quickstfp.core.transport import SpeedLimiter, Transport
 from quickstfp.utils.file_utils import path_stand, is_binary
 
 

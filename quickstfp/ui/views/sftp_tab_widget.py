@@ -81,7 +81,7 @@ class SFTPTabWidget(QWidget):
 
     def _check_health(self):
         try:
-            path = self.info.getcwd()
+            self.info.getcwd()
             if not self._health_status:
                 self.window().tab_widget.setTabText(
                     self.window().tab_widget.indexOf(self),

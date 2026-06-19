@@ -1,7 +1,6 @@
 import json
 import logging
 from pathlib import Path
-from PySide6.QtGui import QFontDatabase
 
 from quickstfp.core.config import get_data_path
 

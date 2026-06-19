@@ -1,11 +1,10 @@
 # ui/views/user_widgets.py
 import logging
 import os
-import datetime
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QComboBox, \
-    QSplitter, QLabel, QMessageBox, QButtonGroup
+    QSplitter, QMessageBox, QButtonGroup
 
 from quickstfp.ui.components.terminal_widget import SSHPtyWidget
 from quickstfp.ui.views.local_widgets import LocalFileWidget
@@ -39,7 +38,6 @@ class ControlWidget(QWidget):
         self.btn_group.idClicked.connect(self.currentRowChanged.emit)
 
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        icons_dir = os.path.join(base_dir, "assets", "icons")
 
         self._items = [
             ("terminal", "SSH 终端"),
@@ -282,7 +280,6 @@ class UserSFTPWidget(QWidget):
     def _show_diff(self):
         local_idx = self.local_file_widget.tree.rootIndex()
         local_dir = self.local_file_widget.model.filePath(local_idx)
-        remote_dir = self.info.getcwd()
 
         local_files = {}
         try:

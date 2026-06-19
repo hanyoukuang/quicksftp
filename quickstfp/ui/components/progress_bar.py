@@ -36,7 +36,6 @@ class ProgressBar(QWidget):
         self.pause_button = QPushButton("⏸️ 暂停")
         self.retry_button = QPushButton("🔄 重试")
         self.retry_button.hide()
-        self._is_failed = False
 
         self.cancel_button = QPushButton("⏹️ 取消")
 
@@ -98,7 +97,6 @@ class ProgressBar(QWidget):
         self.cancel_button.hide()
 
     def mark_failed(self):
-        self._is_failed = True
         self.filename_label.setText(f"❌ {self.transport_type}: {self.filename}")
         self.pause_button.hide()
         self.retry_button.show()

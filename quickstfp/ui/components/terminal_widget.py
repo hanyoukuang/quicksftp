@@ -12,8 +12,8 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Slot, Signal, Qt, QTimer, QEvent
-from PySide6.QtGui import QKeyEvent, QResizeEvent, QAction
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtGui import QKeyEvent, QAction
+from PySide6.QtWidgets import QMenu
 
 from quickstfp.core.session import SSHSFTPInfo
 from quickstfp.ui.components.terminal import PyqTerminal

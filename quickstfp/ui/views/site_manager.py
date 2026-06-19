@@ -258,7 +258,7 @@ class SiteManagerWidget(QWidget):
 
     def generate_key(self):
         dialog = SSHKeygenDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        if dialog.exec() == dialog.DialogCode.Accepted:
             pass  # 用户可自行将公钥部署到服务器
 
     def _new_folder(self):

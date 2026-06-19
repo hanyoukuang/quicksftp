@@ -1,17 +1,13 @@
 # ui/views/remote_file_widget.py
 import logging
-import os
 import tempfile
 
 from PySide6.QtCore import Qt, QModelIndex, QTimer
 from PySide6.QtGui import QStandardItem
 from PySide6.QtWidgets import QMessageBox, QInputDialog, QLineEdit, QMenu, QDialog, QAbstractItemView
 
-from quickstfp.core.session import SSHSFTPInfo
-from quickstfp.core.transport import GET, PUT
-from quickstfp.ui.components.progress_bar import ProgressBar
 from quickstfp.ui.views.editor_widgets import Edit, ExternalEditorWatcher, PermissionDialog
-from quickstfp.ui.views.base_remote_tree import BaseRemoteTreeWidget, NumericSortItem
+from quickstfp.ui.views.base_remote_tree import BaseRemoteTreeWidget
 from quickstfp.ui.views.remote_drag_drop import RemoteDragDropMixin
 from quickstfp.ui.views.batch_rename_dialog import BatchRenameDialog
 from quickstfp.utils.file_utils import is_binary
@@ -298,7 +294,6 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
             if old_name in rename_map:
                 path = self.get_item_path(item)
                 parent_dir = "/".join(path.split("/")[:-1])
-                new_path = f"{parent_dir}/{rename_map[old_name]}"
                 try:
                     self.info.rename(path, rename_map[old_name])
                 except Exception as e:
