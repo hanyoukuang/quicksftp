@@ -46,20 +46,20 @@ jobs:
       - name: Build with Nuitka (macOS)
         if: runner.os == 'macOS'
         run: |
-          uv run python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
+          uv run python -m nuitka --assume-yes-for-downloads --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
           tar -czf QuickSFTP-macOS.tar.gz QuickSFTP.app
 
       - name: Build with Nuitka (Windows)
         if: runner.os == 'Windows'
         run: |
-          uv run python -m nuitka --standalone --windows-disable-console --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
+          uv run python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
           Rename-Item -Path "build_output\main.dist" -NewName "QuickSFTP"
           Compress-Archive -Path "build_output\QuickSFTP" -DestinationPath QuickSFTP-Windows.zip
 
       - name: Build with Nuitka (Linux)
         if: runner.os == 'Linux'
         run: |
-          uv run python -m nuitka --standalone --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
+          uv run python -m nuitka --assume-yes-for-downloads --standalone --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
           mv build_output/main.dist build_output/QuickSFTP
           tar -czf QuickSFTP-Linux.tar.gz -C build_output QuickSFTP
 
