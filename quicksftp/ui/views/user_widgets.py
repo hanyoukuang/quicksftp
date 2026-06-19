@@ -6,12 +6,12 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QComboBox, \
     QSplitter, QMessageBox, QButtonGroup
 
-from quickstfp.ui.components.terminal_widget import SSHPtyWidget
-from quickstfp.ui.views.local_widgets import LocalFileWidget
-from quickstfp.ui.views.remote_file_widget import RemoteFileWidget
-from quickstfp.ui.views.transport_widgets import TransferSetupWidget
-from quickstfp.ui.views.snippets_widget import QuickSnippetsWidget
-from quickstfp.ui.views.directory_diff_dialog import DirectoryDiffDialog
+from quicksftp.ui.components.terminal_widget import SSHPtyWidget
+from quicksftp.ui.views.local_widgets import LocalFileWidget
+from quicksftp.ui.views.remote_file_widget import RemoteFileWidget
+from quicksftp.ui.views.transport_widgets import TransferSetupWidget
+from quicksftp.ui.views.snippets_widget import QuickSnippetsWidget
+from quicksftp.ui.views.directory_diff_dialog import DirectoryDiffDialog
 
 logger = logging.getLogger(__name__)
 

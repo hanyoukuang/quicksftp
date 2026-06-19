@@ -6,11 +6,11 @@ from PySide6.QtCore import Qt, QModelIndex, QTimer
 from PySide6.QtGui import QStandardItem
 from PySide6.QtWidgets import QMessageBox, QInputDialog, QLineEdit, QMenu, QDialog, QAbstractItemView
 
-from quickstfp.ui.views.editor_widgets import Edit, ExternalEditorWatcher, PermissionDialog
-from quickstfp.ui.views.base_remote_tree import BaseRemoteTreeWidget
-from quickstfp.ui.views.remote_drag_drop import RemoteDragDropMixin
-from quickstfp.ui.views.batch_rename_dialog import BatchRenameDialog
-from quickstfp.utils.file_utils import is_binary
+from quicksftp.ui.views.editor_widgets import Edit, ExternalEditorWatcher, PermissionDialog
+from quicksftp.ui.views.base_remote_tree import BaseRemoteTreeWidget
+from quicksftp.ui.views.remote_drag_drop import RemoteDragDropMixin
+from quicksftp.ui.views.batch_rename_dialog import BatchRenameDialog
+from quicksftp.utils.file_utils import is_binary
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +234,7 @@ class RemoteFileWidget(RemoteDragDropMixin, BaseRemoteTreeWidget):
             self.download_item(item)
 
     def download_item(self, item: QStandardItem) -> None:
-        from quickstfp.core.settings import SettingsManager
+        from quicksftp.core.settings import SettingsManager
         download_dir = SettingsManager.get("temp_download_dir", tempfile.gettempdir())
         self.sftp_tab_widget.transport_control_widget.get(self.get_item_path(item), download_dir, 20)
 

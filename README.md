@@ -28,7 +28,7 @@ uv sync
 ```bash
 uv run python main.py
 # 或安装后直接使用命令
-uv run quickstfp
+uv run quicksftp
 ```
 
 ## 安全注意事项

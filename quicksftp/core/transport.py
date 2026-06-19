@@ -9,8 +9,8 @@ from typing import List, Tuple, Coroutine, Optional, Set
 import asyncssh
 from PySide6.QtCore import Signal, Slot, QObject
 
-from quickstfp.core.session import SSHSFTPInfo
-from quickstfp.utils.file_utils import path_stand
+from quicksftp.core.session import SSHSFTPInfo
+from quicksftp.utils.file_utils import path_stand
 
 logger = logging.getLogger(__name__)
 

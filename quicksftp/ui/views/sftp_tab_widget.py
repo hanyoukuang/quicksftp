@@ -2,9 +2,9 @@
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QWidget, QSplitter, QHBoxLayout, QStackedWidget, QMessageBox
 
-from quickstfp.core.session import SSHSFTPInfo
-from quickstfp.ui.views.user_widgets import ControlWidget, UserSFTPWidget, TerminalPanel
-from quickstfp.ui.views.transport_widgets import TransportControlWidget
+from quicksftp.core.session import SSHSFTPInfo
+from quicksftp.ui.views.user_widgets import ControlWidget, UserSFTPWidget, TerminalPanel
+from quicksftp.ui.views.transport_widgets import TransportControlWidget
 
 
 class SFTPTabWidget(QWidget):

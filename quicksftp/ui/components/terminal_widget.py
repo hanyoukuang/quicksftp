@@ -15,13 +15,13 @@ from PySide6.QtCore import QObject, Slot, Signal, Qt, QTimer, QEvent
 from PySide6.QtGui import QKeyEvent, QAction
 from PySide6.QtWidgets import QMenu
 
-from quickstfp.core.session import SSHSFTPInfo
-from quickstfp.ui.components.terminal import PyqTerminal
-from quickstfp.core.settings import SettingsManager
+from quicksftp.core.session import SSHSFTPInfo
+from quicksftp.ui.components.terminal import PyqTerminal
+from quicksftp.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
 
-LOG_DIR = Path.home() / ".config" / "quickstfp" / "logs"
+LOG_DIR = Path.home() / ".config" / "quicksftp" / "logs"
 
 
 class TerminalBridge(QObject):

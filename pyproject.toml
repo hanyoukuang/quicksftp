@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "quickstfp"
-version = "0.1.0"
+name = "quicksftp"
+version = "1.0.0"
 description = "跨平台 SFTP/SSH 客户端工具，支持多标签页终端、并发文件传输与站点管理"
 readme = "README.md"
 license = { text = "MIT" }
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-quickstfp = "quickstfp.main:main"
+quicksftp = "quicksftp.main:main"
 
 [project.urls]
 Repository = "https://github.com/hanyoukuang/quicksftp"
@@ -32,7 +32,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["quickstfp"]
+packages = ["quicksftp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

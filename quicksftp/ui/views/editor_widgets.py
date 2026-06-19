@@ -124,7 +124,7 @@ class ExternalEditorWatcher(QObject):
         # 映射：本地临时路径 -> 远端实际路径
         self.file_map = {}
         # 创建根级临时目录
-        self.temp_dir = tempfile.mkdtemp(prefix="quickstfp_ext_")
+        self.temp_dir = tempfile.mkdtemp(prefix="quicksftp_ext_")
 
     def cleanup_temp_files(self):
         """清理当前会话产生的所有外部编辑临时文件"""

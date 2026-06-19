@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional
 from cryptography.fernet import Fernet
 import keyring
 
-from quickstfp.core.config import get_data_path
+from quicksftp.core.config import get_data_path
 
 
 class CryptoManager:
@@ -87,7 +87,7 @@ class UserInfoDB:
     def __init__(self, db_path: str = None):
         """
         初始化数据库连接和加密管理器
-        :param db_path: 数据库文件路径，默认使用 ~/.config/quickstfp/userinfo.db
+        :param db_path: 数据库文件路径，默认使用 ~/.config/quicksftp/userinfo.db
         """
         self.db_path = db_path or get_data_path('userinfo.db')
         self.conn = sqlite3.connect(self.db_path)

@@ -24,23 +24,23 @@ class LocalFileTreeView(QTreeView):
 
     def dragEnterEvent(self, event):
         # 允许远端拖拽数据进入
-        if event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
 
     def dropEvent(self, event):
-        if event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.acceptProposedAction()
             # 解析远端传来的路径
             remote_paths = json.loads(
-                event.mimeData().data("application/x-quickstfp-remote-paths").data().decode('utf-8'))
+                event.mimeData().data("application/x-quicksftp-remote-paths").data().decode('utf-8'))
 
             # 获取当前鼠标放开的位置所在的本地目录
             index = self.indexAt(event.position().toPoint())

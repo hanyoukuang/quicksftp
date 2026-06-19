@@ -76,7 +76,7 @@ class SSHKeygenDialog(QDialog):
     def _generate(self):
         key_type_name = self._type_combo.currentText()
         save_path = self._path_edit.text().strip()
-        comment = self._comment_edit.text().strip() or "quickstfp-generated"
+        comment = self._comment_edit.text().strip() or "quicksftp-generated"
         passphrase = self._passphrase_edit.text() or None
 
         if not save_path:

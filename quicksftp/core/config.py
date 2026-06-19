@@ -2,15 +2,15 @@ from pathlib import Path
 
 
 def get_config_dir() -> Path:
-    """获取 quickstfp 配置目录，优先使用 ~/.config/quickstfp/"""
-    config_dir = Path.home() / ".config" / "quickstfp"
+    """获取 quicksftp 配置目录，优先使用 ~/.config/quicksftp/"""
+    config_dir = Path.home() / ".config" / "quicksftp"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
 
 
 def get_data_path(filename: str, legacy_cwd_fallback: bool = True) -> str:
     """
-    获取数据文件路径。优先使用 ~/.config/quickstfp/ 下的文件，
+    获取数据文件路径。优先使用 ~/.config/quicksftp/ 下的文件，
     如果旧 CWD 文件存在则自动迁移并继续使用。
 
     :param filename: 数据文件名 (如 'userinfo.db', '.secret.key', 'quick_snippets_v2.json')

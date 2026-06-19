@@ -1,5 +1,5 @@
 """CryptoManager 单元测试"""
-from quickstfp.database.user_model import CryptoManager
+from quicksftp.database.user_model import CryptoManager
 
 
 class TestCryptoManager:

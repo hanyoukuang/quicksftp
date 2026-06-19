@@ -16,10 +16,10 @@ tmp/
 temp/
 
 # PySide6 图标缓存临时目录
-quickstfp_icons_*
+quicksftp_icons_*
 
 # 外部编辑器临时文件目录
-quickstfp_ext_*
+quicksftp_ext_*
 
 # ============ Python 标准忽略 ============
 __pycache__/

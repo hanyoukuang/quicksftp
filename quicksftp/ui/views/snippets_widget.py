@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBu
     QTreeWidgetItem, QMenu, QInputDialog, QMessageBox, QLineEdit, QFormLayout, QDialog, \
     QDialogButtonBox, QComboBox
 
-from quickstfp.core.config import get_data_path
+from quicksftp.core.config import get_data_path
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class QuickSnippetsWidget(QWidget):
             "global": [],
             "sites": {}
         }
-        self._history_file = get_data_path("quickstfp_command_history.json")
+        self._history_file = get_data_path("quicksftp_command_history.json")
         self._history: list[dict] = []
         self._load_history()
         self.init_ui()

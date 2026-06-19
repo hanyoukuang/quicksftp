@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QDialogButtonBox, QFormLayout
 )
 
-from quickstfp.core.settings import SettingsManager
+from quicksftp.core.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
 

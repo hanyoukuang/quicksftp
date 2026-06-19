@@ -19,7 +19,7 @@ class RemoteDragDropMixin:
         mime_data = QMimeData()
         paths = [self.get_item_path(item) for item in items]
         encoded_data = json.dumps(paths).encode('utf-8')
-        mime_data.setData("application/x-quickstfp-remote-paths", QByteArray(encoded_data))
+        mime_data.setData("application/x-quicksftp-remote-paths", QByteArray(encoded_data))
         drag.setMimeData(mime_data)
 
         if len(items) == 1:
@@ -51,13 +51,13 @@ class RemoteDragDropMixin:
         drag.exec(supportedActions)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.accept()
         else:
             super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        if event.mimeData().hasUrls() or event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.accept()
         else:
             super().dragMoveEvent(event)
@@ -78,10 +78,10 @@ class RemoteDragDropMixin:
                 if local_path: self.sftp_tab_widget.transport_control_widget.put(local_path, dst_path, 20)
             self.refresh()
 
-        elif event.mimeData().hasFormat("application/x-quickstfp-remote-paths"):
+        elif event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.accept()
             remote_paths = json.loads(
-                event.mimeData().data("application/x-quickstfp-remote-paths").data().decode('utf-8'))
+                event.mimeData().data("application/x-quicksftp-remote-paths").data().decode('utf-8'))
 
             index = self.indexAt(event.position().toPoint())
 

@@ -1,7 +1,7 @@
 """Transport 模块单元测试"""
 import pytest
-from quickstfp.core.transport import SpeedLimiter, Transport
-from quickstfp.utils.file_utils import path_stand, is_binary
+from quicksftp.core.transport import SpeedLimiter, Transport
+from quicksftp.utils.file_utils import path_stand, is_binary
 
 
 class TestPathStand:

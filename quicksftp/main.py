@@ -5,11 +5,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QMessageBox, QLabel
 
-from quickstfp.ui.views.sftp_tab_widget import SFTPTabWidget
-from quickstfp.ui.views.site_manager import SiteManagerWidget
-from quickstfp.ui.views.port_forward_dialog import PortForwardDialog
-from quickstfp.ui.views.settings_dialog import SettingsDialog
-from quickstfp.core.settings import SettingsManager
+from quicksftp.ui.views.sftp_tab_widget import SFTPTabWidget
+from quicksftp.ui.views.site_manager import SiteManagerWidget
+from quicksftp.ui.views.port_forward_dialog import PortForwardDialog
+from quicksftp.ui.views.settings_dialog import SettingsDialog
+from quicksftp.core.settings import SettingsManager
 
 
 class MainWindow(QMainWindow):

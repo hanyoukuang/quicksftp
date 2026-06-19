@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 
-from quickstfp.core.config import get_data_path
+from quicksftp.core.config import get_data_path
 
 logger = logging.getLogger(__name__)
 
