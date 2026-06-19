@@ -119,7 +119,9 @@ class SSHPtyWidget(PyqTerminal):
     """SSH pseudo-terminal view."""
 
     def __init__(self, info: SSHSFTPInfo):
-        super().__init__(rows=24, cols=80)
+        font_family = SettingsManager.get("font_family")
+        font_size = SettingsManager.get("font_size", 14)
+        super().__init__(rows=24, cols=80, font_family=font_family, font_size=font_size)
         self.info = info
 
         # ── I/O bridge (asyncssh ↔ terminal widget) ────────────────────
@@ -192,7 +194,7 @@ class SSHPtyWidget(PyqTerminal):
 
         zoom_reset = QAction("↩️ 重置缩放", menu)
         zoom_reset.setShortcut("Ctrl+0")
-        zoom_reset.triggered.connect(lambda: self.set_font_size(14))
+        zoom_reset.triggered.connect(lambda: self.set_font_size(SettingsManager.get("font_size", 14)))
         menu.addAction(zoom_reset)
 
         menu.exec(event.globalPos())
@@ -234,7 +236,7 @@ class SSHPtyWidget(PyqTerminal):
             self.set_font_size(self.terminal_font.pointSize() + delta)
             return
         if zoom_mod and key == Qt.Key_0:
-            self.set_font_size(14)
+            self.set_font_size(SettingsManager.get("font_size", 14))
             return
 
         super().keyPressEvent(event)
