@@ -47,6 +47,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           uv run python -m nuitka --assume-yes-for-downloads --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
+          mv main.app QuickSFTP.app
           tar -czf QuickSFTP-macOS.tar.gz QuickSFTP.app
 
       - name: Build with Nuitka (Windows)
