@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当你向 GitHub 推送类似于 v1.0.0 的 tag 时自动触发
+
+permissions:
+  contents: write # 赋予 Workflow 在你的仓库创建 Release 版本的权限
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false # 保证如果某个系统编译失败，不影响其他系统的继续编译
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux Desktop Dependencies
+        if: runner.os == 'Linux'
+        # 在无头 Linux 服务器上编译 Qt 程序，需要补充一些系统底层的图形库依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-cursor0 patchelf build-essential
+
+      - name: Install Python Dependencies
+        run: |
+          uv sync
+          uv add nuitka ordered-set
+
+      - name: Build with Nuitka (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          uv run python -m nuitka --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quickstfp/assets=quickstfp/assets main.py
+          tar -czf QuickSFTP-macOS.tar.gz QuickSFTP.app
+
+      - name: Build with Nuitka (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv run python -m nuitka --standalone --windows-disable-console --plugin-enable=pyside6 --include-data-dir=quickstfp/assets=quickstfp/assets --output-dir=build_output main.py
+          Rename-Item -Path "build_output\main.dist" -NewName "QuickSFTP"
+          Compress-Archive -Path "build_output\QuickSFTP" -DestinationPath QuickSFTP-Windows.zip
+
+      - name: Build with Nuitka (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          uv run python -m nuitka --standalone --plugin-enable=pyside6 --include-data-dir=quickstfp/assets=quickstfp/assets --output-dir=build_output main.py
+          mv build_output/main.dist build_output/QuickSFTP
+          tar -czf QuickSFTP-Linux.tar.gz -C build_output QuickSFTP
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            QuickSFTP-macOS.tar.gz
+            QuickSFTP-Windows.zip
+            QuickSFTP-Linux.tar.gz
