@@ -48,14 +48,42 @@ jobs:
         run: |
           uv run python -m nuitka --assume-yes-for-downloads --standalone --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
           mv main.app QuickSFTP.app
-          tar -czf QuickSFTP-macOS.tar.gz QuickSFTP.app
+          mkdir dmg_dir
+          mv QuickSFTP.app dmg_dir/
+          ln -s /Applications dmg_dir/Applications
+          hdiutil create -volname "QuickSFTP" -srcfolder dmg_dir -ov -format UDZO QuickSFTP-macOS.dmg
 
       - name: Build with Nuitka (Windows)
         if: runner.os == 'Windows'
         run: |
           uv run python -m nuitka --assume-yes-for-downloads --standalone --windows-console-mode=disable --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets --output-dir=build_output main.py
+          Rename-Item -Path "build_output\main.dist\main.exe" -NewName "QuickSFTP.exe"
           Rename-Item -Path "build_output\main.dist" -NewName "QuickSFTP"
-          Compress-Archive -Path "build_output\QuickSFTP" -DestinationPath QuickSFTP-Windows.zip
+          $issContent = @"
+          [Setup]
+          AppName=QuickSFTP
+          AppVersion=1.0.0
+          DefaultDirName={autopf}\QuickSFTP
+          DefaultGroupName=QuickSFTP
+          OutputDir=.
+          OutputBaseFilename=QuickSFTP-Windows-Setup
+          Compression=lzma2
+          SolidCompression=yes
+          ArchitecturesInstallIn64BitMode=x64
+          PrivilegesRequired=lowest
+
+          [Files]
+          Source: "build_output\QuickSFTP\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{group}\QuickSFTP"; Filename: "{app}\QuickSFTP.exe"
+          Name: "{autodesktop}\QuickSFTP"; Filename: "{app}\QuickSFTP.exe"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"
+          "@
+          Set-Content -Path "installer.iss" -Value $issContent
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Build with Nuitka (Linux)
         if: runner.os == 'Linux'
@@ -68,6 +96,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            QuickSFTP-macOS.tar.gz
-            QuickSFTP-Windows.zip
+            QuickSFTP-macOS.dmg
+            QuickSFTP-Windows-Setup.exe
             QuickSFTP-Linux.tar.gz
