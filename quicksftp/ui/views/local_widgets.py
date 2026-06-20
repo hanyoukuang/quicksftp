@@ -149,6 +149,11 @@ class LocalFileWidget(QWidget):
         self.up_button.clicked.connect(self.go_up)
         self.toggle_hidden_btn.clicked.connect(self.toggle_hidden)
 
+        # --- 新增：开启多选和右键菜单支持 ---
+        self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.show_context_menu)
+
     def _update_model_filter(self):
         filters = QDir.AllEntries | QDir.NoDotAndDotDot | QDir.AllDirs
         if self.show_hidden:
@@ -159,10 +164,6 @@ class LocalFileWidget(QWidget):
         self.show_hidden = not self.show_hidden
         self.toggle_hidden_btn.setText("👁️ 隐藏点文件" if self.show_hidden else "👁️ 显示隐藏文件")
         self._update_model_filter()
-        # --- 新增：开启多选和右键菜单支持 ---
-        self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.tree.customContextMenuRequested.connect(self.show_context_menu)
 
     def check_dir_permission(self, path: str) -> bool:
         import os
