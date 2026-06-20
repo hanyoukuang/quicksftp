@@ -29,6 +29,24 @@ class NumericSortItem(QStandardItem):
         return super().__lt__(other)
 
 
+class QuickSFTPRemoteModel(QStandardItemModel):
+    def mimeTypes(self):
+        types = super().mimeTypes()
+        if "application/x-quicksftp-remote-paths" not in types:
+            types.append("application/x-quicksftp-remote-paths")
+        if "text/uri-list" not in types:
+            types.append("text/uri-list")
+        return types
+
+    def supportedDropActions(self):
+        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction | super().supportedDropActions()
+
+    def dropMimeData(self, data, action, row, column, parent):
+        if data.hasFormat("application/x-quicksftp-remote-paths") or data.hasUrls():
+            return False
+        return super().dropMimeData(data, action, row, column, parent)
+
+
 class BaseRemoteTreeWidget(QTreeView):
     """
     远端文件树的基础视图组件 (白板容器)。
@@ -56,7 +74,7 @@ class BaseRemoteTreeWidget(QTreeView):
         self.icon_cache = {}
 
         # 数据模型初始化
-        self.model = QStandardItemModel()
+        self.model = QuickSFTPRemoteModel()
         self.model.setHorizontalHeaderLabels(
             ["名称", "大小", "类型", "修改时间", "权限"]
         )
@@ -163,11 +181,14 @@ class BaseRemoteTreeWidget(QTreeView):
     async def fetch_current_dir(self, path: str):
         try:
             entries = []
+            all_entries = []
             async for entry in self.info.sftp.scandir(path):
                 if entry.filename not in (".", ".."):
+                    all_entries.append(entry)
                     if not self.show_hidden and entry.filename.startswith("."):
                         continue
                     entries.append(entry)
+            self.last_raw_entries = all_entries
             self.current_folder_loaded_msg.emit(entries)
         except Exception as e:
             logger.warning(f"拉取目录失败: {e}")
@@ -212,6 +233,8 @@ class BaseRemoteTreeWidget(QTreeView):
             name_item.setIcon(
                 self.DIR_ICON if is_dir else self.get_file_icon(entry.filename)
             )
+            if not is_dir:
+                name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsDropEnabled)
             full_path = f"{parent_path}/{entry.filename}".replace("//", "/")
             name_item.setData(full_path, Qt.ItemDataRole.UserRole)
 

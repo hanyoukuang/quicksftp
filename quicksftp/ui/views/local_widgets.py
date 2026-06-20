@@ -34,17 +34,15 @@ class LocalFileTreeView(QTreeView):
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
 
     def dragEnterEvent(self, event):
+        super().dragEnterEvent(event)
         # 允许远端拖拽数据进入
         if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.acceptProposedAction()
-        else:
-            super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
+        super().dragMoveEvent(event)
         if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
             event.acceptProposedAction()
-        else:
-            super().dragMoveEvent(event)
 
     def dropEvent(self, event):
         if event.mimeData().hasFormat("application/x-quicksftp-remote-paths"):
@@ -76,6 +74,21 @@ class LocalFileTreeView(QTreeView):
             super().dropEvent(event)
 
 
+class QuickSFTPLocalModel(QFileSystemModel):
+    def mimeTypes(self):
+        types = super().mimeTypes()
+        if "application/x-quicksftp-remote-paths" not in types:
+            types.append("application/x-quicksftp-remote-paths")
+        return types
+
+    def supportedDropActions(self):
+        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction | super().supportedDropActions()
+
+    def dropMimeData(self, data, action, row, column, parent):
+        if data.hasFormat("application/x-quicksftp-remote-paths"):
+            return False
+        return super().dropMimeData(data, action, row, column, parent)
+
 class LocalFileWidget(QWidget):
     """
     本地文件系统浏览器。
@@ -87,9 +100,11 @@ class LocalFileWidget(QWidget):
         self.sftp_tab_widget = sftp_tab_widget
 
         # 1. 初始化本地文件系统模型
-        self.model = QFileSystemModel()
+        self.model = QuickSFTPLocalModel()
         self.model.setRootPath(QDir.rootPath())
         self.model.setReadOnly(False)  # 关闭只读模式以支持原生本地文件的操作
+        self.show_hidden = False
+        self._update_model_filter()
 
         # 2. 初始化树形视图 (使用修改后的自定义 View)
         self.tree = LocalFileTreeView(self.sftp_tab_widget)
@@ -104,6 +119,7 @@ class LocalFileWidget(QWidget):
         self.path_edit = QLineEdit(QDir.homePath())
         self.path_edit.setReadOnly(True)
         self.up_button = QPushButton("⬆️ 返回上级")
+        self.toggle_hidden_btn = QPushButton("👁️ 显示隐藏文件")
 
         # --- 新增：剪贴板变量 ---
         self.copy_paths = []
@@ -114,6 +130,7 @@ class LocalFileWidget(QWidget):
     def init_ui(self):
         hbox = QHBoxLayout()
         hbox.addWidget(self.up_button)
+        hbox.addWidget(self.toggle_hidden_btn)
         hbox.addWidget(self.path_edit)
 
         vbox = QVBoxLayout()
@@ -124,15 +141,45 @@ class LocalFileWidget(QWidget):
 
         self.tree.doubleClicked.connect(self.on_double_click)
         self.up_button.clicked.connect(self.go_up)
+        self.toggle_hidden_btn.clicked.connect(self.toggle_hidden)
 
+    def _update_model_filter(self):
+        filters = QDir.AllEntries | QDir.NoDotAndDotDot | QDir.AllDirs
+        if self.show_hidden:
+            filters |= QDir.Hidden
+        self.model.setFilter(filters)
+
+    def toggle_hidden(self):
+        self.show_hidden = not self.show_hidden
+        self.toggle_hidden_btn.setText("👁️ 隐藏点文件" if self.show_hidden else "👁️ 显示隐藏文件")
+        self._update_model_filter()
         # --- 新增：开启多选和右键菜单支持 ---
         self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
 
+    def check_dir_permission(self, path: str) -> bool:
+        import os
+        import sys
+        from PySide6.QtWidgets import QMessageBox
+        try:
+            os.scandir(path).close()
+            return True
+        except PermissionError:
+            msg = f"无法访问文件夹：{path}\n\n缺少读取权限。"
+            if sys.platform == "darwin":
+                msg += "\n\n请前往 macOS 的「系统设置 -> 隐私与安全性 -> 完整磁盘访问权限」，为本程序或终端授予权限。"
+            QMessageBox.warning(self, "权限不足", msg)
+            return False
+        except Exception as e:
+            QMessageBox.warning(self, "访问错误", f"无法打开文件夹：{e}")
+            return False
+
     def on_double_click(self, index: QModelIndex):
         path = self.model.filePath(index)
         if self.model.isDir(index):
+            if not self.check_dir_permission(path):
+                return
             self.tree.setRootIndex(index)
             self.path_edit.setText(path)
 
@@ -141,6 +188,8 @@ class LocalFileWidget(QWidget):
         parent_dir = QDir(current_path)
         if parent_dir.cdUp():
             new_path = parent_dir.absolutePath()
+            if not self.check_dir_permission(new_path):
+                return
             self.tree.setRootIndex(self.model.index(new_path))
             self.path_edit.setText(new_path)
 

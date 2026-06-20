@@ -26,10 +26,15 @@ class DirectoryDiffDialog(QDialog):
         layout = QVBoxLayout(self)
 
         header = QHBoxLayout()
-        header.addWidget(QLabel(f"🟢 一致:  {self._count_status('same')}  "))
-        header.addWidget(QLabel(f"🔵 仅本地:  {self._count_status('local_only')}  "))
-        header.addWidget(QLabel(f"🟠 仅远端:  {self._count_status('remote_only')}  "))
-        header.addWidget(QLabel(f"🔴 差异:  {self._count_status('diff')}"))
+        self._lbl_same = QLabel("🟢 一致: 0")
+        self._lbl_local = QLabel("🔵 仅本地: 0")
+        self._lbl_remote = QLabel("🟠 仅远端: 0")
+        self._lbl_diff = QLabel("🔴 差异: 0")
+        
+        header.addWidget(self._lbl_same)
+        header.addWidget(self._lbl_local)
+        header.addWidget(self._lbl_remote)
+        header.addWidget(self._lbl_diff)
         layout.addLayout(header)
 
         self._tree = QTreeWidget()
@@ -61,6 +66,8 @@ class DirectoryDiffDialog(QDialog):
                     status = ("🟢 一致", QColor("#2e7d32"), QColor("#e8f5e9"))
                 else:
                     status = ("🔴 差异", QColor("#c62828"), QColor("#fce4ec"))
+                    import logging
+                    logging.getLogger("quicksftp").warning(f"DIFF DETECTED for {name}: local={repr(l_size)} ({type(l_size)}), remote={repr(r_size)} ({type(r_size)})")
                 self._local[name]["status"] = "same" if l_size == r_size else "diff"
             elif name in self._local:
                 status = ("🔵 仅本地", QColor("#1565c0"), QColor("#e3f2fd"))
@@ -69,8 +76,26 @@ class DirectoryDiffDialog(QDialog):
                 status = ("🟠 仅远端", QColor("#e65100"), QColor("#fff3e0"))
                 self._remote[name] = {"status": "remote_only"}
 
-            item = QTreeWidgetItem([status[0], name, str(l_size), str(r_size), r_time])
+            if l_size == -1:
+                l_size_str = "文件夹"
+            else:
+                l_size_str = str(l_size) if l_size != "" else ""
+                
+            if r_size == -1:
+                r_size_str = "文件夹"
+            else:
+                r_size_str = str(r_size) if r_size != "" else ""
+
+            item = QTreeWidgetItem([status[0], name, l_size_str, r_size_str, r_time])
             for col in range(5):
                 item.setBackground(col, status[2])
                 item.setForeground(col, status[1])
             self._tree.addTopLevelItem(item)
+
+        self._lbl_same.setText(f"🟢 一致: {self._count_status('same')}")
+        self._lbl_local.setText(f"🔵 仅本地: {self._count_status('local_only')}")
+        self._lbl_remote.setText(f"🟠 仅远端: {self._count_status('remote_only') + self._count_remote_only()}")
+        self._lbl_diff.setText(f"🔴 差异: {self._count_status('diff')}")
+
+    def _count_remote_only(self) -> int:
+        return sum(1 for v in self._remote.values() if v.get("status") == "remote_only")

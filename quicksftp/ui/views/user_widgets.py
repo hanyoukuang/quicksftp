@@ -1,5 +1,6 @@
 # ui/views/user_widgets.py
 import logging
+import datetime
 import os
 
 from PySide6.QtCore import Qt, Signal, Slot
@@ -146,10 +147,6 @@ class UserSFTPWidget(QWidget):
         self.show_hidden_btn = QPushButton("👁️ 显示隐藏")
         self.show_hidden_btn.setCheckable(True)
 
-        self.sync_browse_btn = QPushButton("🔗 同步浏览")
-        self.sync_browse_btn.setCheckable(True)
-        self._sync_enabled = False
-
         self.diff_btn = QPushButton("📊 目录比较")
 
         self.init_ui()
@@ -166,8 +163,6 @@ class UserSFTPWidget(QWidget):
         remote_hbox.addWidget(self.search_edit)
 
         remote_hbox.addWidget(self.show_hidden_btn)
-
-        remote_hbox.addWidget(self.sync_browse_btn)
 
         remote_hbox.addWidget(self.diff_btn)
 
@@ -200,32 +195,19 @@ class UserSFTPWidget(QWidget):
 
         # 绑定 ComboBox 的激活信号（回车或点击下拉选项）
         self.path_combo.activated.connect(self.on_path_combo_activated)
-        self.sync_browse_btn.toggled.connect(self._toggle_sync_browse)
         self.show_hidden_btn.toggled.connect(self.toggle_hidden_files)
         self.search_edit.returnPressed.connect(self.on_search)
         self.search_edit.textChanged.connect(self.on_search_text_changed)
 
-        self.local_file_widget.tree.doubleClicked.connect(self._on_local_navigate)
         self.diff_btn.clicked.connect(self._show_diff)
 
-    def _toggle_sync_browse(self, checked: bool):
-        self._sync_enabled = checked
-
-    def _on_local_navigate(self, index):
-        if not self._sync_enabled:
-            return
-        path = self.local_file_widget.model.filePath(index)
-        basename = path.split("/")[-1]
+    def back_parent_path(self):
         try:
-            remote_path = f"{self.info.getcwd()}/{basename}"
-            if self.info.is_file(remote_path):
-                self.info.chdir(self.info.getcwd())
-            else:
-                self.info.chdir(remote_path)
+            self.info.chdir("..")
             self.remote_file_widget.refresh()
             self.display_path(self.info.realpath("."))
         except Exception as e:
-            logger.debug(f"Sync browse navigate failed: {e}")
+            logger.warning(f"Failed to go back: {e}")
 
     def on_search(self):
         keyword = self.search_edit.text().strip()
@@ -248,12 +230,14 @@ class UserSFTPWidget(QWidget):
             # 尝试切换底层目录
             self.info.chdir(path)
             # 获取进入后的绝对路径
-            real_path = self.info.realpath(".")
-            # 强制清空当前视图，触发底层全量扫描以获得极速刷新体验
+            new_path = self.info.realpath(".")
+            # 刷新文件列表
             self.remote_file_widget.refresh()
-            self.display_path(real_path)
+            # 更新下拉框显示并加入历史
+            self.display_path(new_path)
         except Exception as e:
-            QMessageBox.warning(self, "访问失败", f"无法进入该目录:\n{e}")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "错误", f"无法切换到路径 {path}:\n{e}")
             # 失败后，恢复输入框为当前的实际合法路径
             self.display_path(self.info.getcwd())
 
@@ -299,24 +283,25 @@ class UserSFTPWidget(QWidget):
         local_files = {}
         try:
             for entry in os.scandir(local_dir):
-                local_files[entry.name] = {"size": entry.stat().st_size}
+                if entry.name in (".", ".."):
+                    continue
+                size = -1 if entry.is_dir() else entry.stat().st_size
+                local_files[entry.name] = {"size": size}
         except Exception as e:
             logger.warning(f"Local file scan failed for dir diff: {e}")
 
         remote_files = {}
         try:
-            self.remote_file_widget.refresh()
-            for name, item in self.remote_file_widget.all_files_dict.items():
-                idx = item.index()
-                size_item = self.remote_file_widget.model.itemFromIndex(
-                    idx.siblingAtColumn(1)
-                )
-                time_item = self.remote_file_widget.model.itemFromIndex(
-                    idx.siblingAtColumn(3)
-                )
-                remote_files[name] = {
-                    "size": size_item.text() if size_item else "",
-                    "time": time_item.text() if time_item else "",
+            raw_entries = getattr(self.remote_file_widget, "last_raw_entries", [])
+            for entry in raw_entries:
+                is_dir = entry.attrs.type == 2
+                size_val = -1 if is_dir else getattr(entry.attrs, "size", 0)
+                mtime_val = getattr(entry.attrs, "mtime", 0)
+                mtime_str = datetime.datetime.fromtimestamp(mtime_val).strftime("%Y-%m-%d %H:%M:%S") if mtime_val else ""
+                
+                remote_files[entry.filename] = {
+                    "size": size_val,
+                    "time": mtime_str,
                 }
         except Exception as e:
             logger.warning(f"Remote file read failed for dir diff: {e}")

@@ -25,11 +25,16 @@ class RemoteDragDropMixin:
         )
         drag.setMimeData(mime_data)
 
+        ratio = self.devicePixelRatio()
         if len(items) == 1:
             item = items[0]
-            pixmap = QPixmap(200, 30)
+            pixmap = QPixmap(int(200 * ratio), int(30 * ratio))
+            pixmap.setDevicePixelRatio(ratio)
             pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             icon = item.icon()
             if not icon.isNull():
                 icon.paint(painter, QRect(0, 5, 20, 20))
@@ -42,9 +47,12 @@ class RemoteDragDropMixin:
             drag.setHotSpot(QPoint(10, 15))
         else:
             text = f"移动 {len(items)} 个项目"
-            pixmap = QPixmap(150, 30)
+            pixmap = QPixmap(int(150 * ratio), int(30 * ratio))
+            pixmap.setDevicePixelRatio(ratio)
             pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
             painter.setBrush(Qt.GlobalColor.lightGray)
             painter.setPen(Qt.GlobalColor.NoPen)
             painter.drawRoundedRect(0, 0, 150, 30, 5, 5)
@@ -57,20 +65,18 @@ class RemoteDragDropMixin:
         drag.exec(supportedActions)
 
     def dragEnterEvent(self, event):
+        super().dragEnterEvent(event)
         if event.mimeData().hasUrls() or event.mimeData().hasFormat(
             "application/x-quicksftp-remote-paths"
         ):
             event.accept()
-        else:
-            super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):
+        super().dragMoveEvent(event)
         if event.mimeData().hasUrls() or event.mimeData().hasFormat(
             "application/x-quicksftp-remote-paths"
         ):
             event.accept()
-        else:
-            super().dragMoveEvent(event)
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
