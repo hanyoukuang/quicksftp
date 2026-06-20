@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
                 pty = tab.terminal_panel.ssh_pty_widget
                 pty.terminal_font.setFamily(font_family)
                 pty.set_font_size(font_size)
+                tab.terminal_panel._apply_settings()
 
     def _toggle_dark_mode(self, checked: bool):
         self._dark_mode = checked
@@ -128,10 +129,12 @@ class MainWindow(QMainWindow):
                 QMainWindow, QWidget { background-color: #f5f5f5; color: #333; }
                 QTabWidget::pane { background: #ffffff; border: none; border-top: 1px solid #ddd; }
                 QTabBar { background: #ececec; }
-                QTabBar::tab { background: #ececec; color: #666; padding: 8px 16px; border: none; border-right: 1px solid #ddd; }
+                QTabBar::tab { background: #ececec; color: #666; padding: 4px 12px; font-size: 12px; border: none; border-right: 1px solid #ddd; }
                 QTabBar::tab:selected { background: #ffffff; color: #000; border-top: 2px solid #4a6da7; border-right: 1px solid #ddd; border-left: 1px solid #ddd; }
                 QTabBar::tab:hover:!selected { background: #e4e4e4; }
-                QToolBar { background: #ececec; border: none; border-bottom: 1px solid #ddd; padding: 2px; }
+                QToolBar { background: #ececec; border: none; border-bottom: 1px solid #ddd; padding: 4px; spacing: 10px; }
+                QToolButton { font-size: 14px; padding: 6px 12px; border-radius: 4px; color: #333; }
+                QToolButton:hover { background: #dcdcdc; }
                 QStatusBar { background: #ececec; color: #333; border-top: 1px solid #ddd; }
                 QStatusBar QLabel { padding: 0 5px; }
                 QLineEdit, QComboBox, QSpinBox { background: #fff; color: #333; border: 1px solid #aaa; border-radius: 2px; padding: 2px; }
@@ -166,10 +169,12 @@ class MainWindow(QMainWindow):
             QMainWindow, QWidget { background-color: #1e1e1e; color: #cccccc; }
             QTabWidget::pane { background: #1e1e1e; border: none; border-top: 1px solid #333; }
             QTabBar { background: #252526; }
-            QTabBar::tab { background: #2d2d2d; color: #969696; padding: 8px 16px; border: none; border-right: 1px solid #252526; }
+            QTabBar::tab { background: #2d2d2d; color: #969696; padding: 4px 12px; font-size: 12px; border: none; border-right: 1px solid #252526; }
             QTabBar::tab:selected { background: #1e1e1e; color: #ffffff; border-top: 2px solid #007acc; }
             QTabBar::tab:hover:!selected { background: #2b2d2e; }
-            QToolBar { background: #252526; border: none; border-bottom: 1px solid #333; padding: 2px; }
+            QToolBar { background: #252526; border: none; border-bottom: 1px solid #333; padding: 4px; spacing: 10px; }
+            QToolButton { font-size: 14px; padding: 6px 12px; border-radius: 4px; color: #cccccc; }
+            QToolButton:hover { background: #333333; color: #ffffff; }
             QStatusBar { background: #007acc; color: #ffffff; border: none; }
             QStatusBar QLabel { padding: 0 5px; }
             QLineEdit, QComboBox, QSpinBox { background: #3c3c3c; color: #fff; border: 1px solid #555; border-radius: 2px; padding: 2px; }
@@ -267,6 +272,9 @@ class MainWindow(QMainWindow):
             # 将其添加为一个新的 Tab
             index = self.tab_widget.addTab(new_sftp_tab, tab_name)
             self.tab_widget.setCurrentIndex(index)  # 自动跳转到新开的标签页
+            
+            # 同步当前的主题状态到新标签页
+            new_sftp_tab.control_widget.update_theme(self._dark_mode)
 
             # (可选) 连接成功后自动隐藏站点管理器
             self.site_manager.hide()

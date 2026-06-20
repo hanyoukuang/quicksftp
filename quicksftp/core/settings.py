@@ -14,6 +14,7 @@ def get_default_settings():
         "temp_download_dir": str(Path.home() / "Downloads" / "QuickSFTP"),
         "font_family": "Courier New",  # Default fallback
         "font_size": 14,
+        "enable_monitor": False,
     }
 
 

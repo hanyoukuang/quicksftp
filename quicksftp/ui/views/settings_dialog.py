@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QDialogButtonBox,
     QFormLayout,
+    QCheckBox,
 )
 
 from quicksftp.core.settings import SettingsManager
@@ -58,6 +59,10 @@ class SettingsDialog(QDialog):
         self.size_spin.setRange(8, 72)
         form_layout.addRow("终端文字大小:", self.size_spin)
 
+        # Monitor setting
+        self.monitor_checkbox = QCheckBox("在终端下方显示服务器实时资源状态 (类似 FinalShell)")
+        form_layout.addRow("监控面板:", self.monitor_checkbox)
+
         layout.addLayout(form_layout)
 
         # Buttons
@@ -88,12 +93,14 @@ class SettingsDialog(QDialog):
             self.font_combo.setCurrentText(font_family)
 
         self.size_spin.setValue(settings.get("font_size", 14))
+        self.monitor_checkbox.setChecked(settings.get("enable_monitor", False))
 
     def accept(self):
         settings = {
             "temp_download_dir": self.temp_dir_edit.text(),
             "font_family": self.font_combo.currentText(),
             "font_size": self.size_spin.value(),
+            "enable_monitor": self.monitor_checkbox.isChecked(),
         }
         SettingsManager.save(settings)
         self.settings_changed.emit()

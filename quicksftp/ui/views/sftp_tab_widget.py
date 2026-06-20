@@ -147,6 +147,9 @@ class SFTPTabWidget(QWidget):
         self.control_widget.currentRowChanged.connect(
             self.stacked_widget.setCurrentIndex
         )
+        self.control_widget.snippets_toggle_btn.toggled.connect(
+            self.terminal_panel.toggle_snippets
+        )
 
     def closeEvent(self, event, /):
         super().closeEvent(event)

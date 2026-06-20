@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QInputDialog,
     QMessageBox,
+    QSizePolicy,
 )
 
 
@@ -127,11 +128,16 @@ class LocalFileWidget(QWidget):
 
         self.init_ui()
 
+        self.path_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
     def init_ui(self):
         hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 5)
+        hbox.setSpacing(6)
+        
         hbox.addWidget(self.up_button)
-        hbox.addWidget(self.toggle_hidden_btn)
         hbox.addWidget(self.path_edit)
+        hbox.addWidget(self.toggle_hidden_btn)
 
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)

@@ -54,7 +54,7 @@ class BaseRemoteTreeWidget(QTreeView):
     没有任何业务操作（无右键菜单、无拖拽、无删除编辑）。
     """
 
-    current_folder_loaded_msg = Signal(list)
+    current_folder_loaded_msg = Signal(int, list)
     path_change_msg = Signal(str)
     sub_folder_loaded_msg = Signal(QModelIndex, list)
 
@@ -92,6 +92,7 @@ class BaseRemoteTreeWidget(QTreeView):
         # 状态缓存
         self.all_files_dict = dict()
         self.show_hidden = False
+        self._refresh_seq = 0
 
         self.init_base_ui()
 
@@ -126,59 +127,54 @@ class BaseRemoteTreeWidget(QTreeView):
 
     def refresh(self):
         """全量拉取刷新当前列表"""
+        self._refresh_seq += 1
+        seq = self._refresh_seq
         self.model.removeRows(0, self.model.rowCount())
         self.all_files_dict.clear()
         target_path = getattr(self, "abspath", self.info.getcwd())
         asyncio.run_coroutine_threadsafe(
-            self.fetch_current_dir(target_path), self.info.loop
+            self.fetch_current_dir(target_path, seq), self.info.loop
         )
 
     def search(self, keyword: str):
         """搜索远端文件"""
+        self._refresh_seq += 1
+        seq = self._refresh_seq
         self.model.removeRows(0, self.model.rowCount())
         self.all_files_dict.clear()
+        
+        # 添加一个搜索中提示节点
+        loading_item = QStandardItem(f"🔍 正在全局搜索 '{keyword}' ...")
+        loading_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.model.appendRow([loading_item, QStandardItem(""), QStandardItem(""), QStandardItem(""), QStandardItem("")])
+        
         target_path = getattr(self, "abspath", self.info.getcwd())
         asyncio.run_coroutine_threadsafe(
-            self.fetch_search_results(target_path, keyword), self.info.loop
+            self.fetch_search_results(target_path, keyword, seq), self.info.loop
         )
 
-    async def fetch_search_results(self, path: str, keyword: str):
+    async def fetch_search_results(self, path: str, keyword: str, seq: int):
         try:
-            cmd = f'cd "{path}" && find . -iname "*{keyword}*" 2>/dev/null'
-            result = await self.info.connection.run(cmd)
-            stdout = result.stdout
-            if not stdout:
-                self.current_folder_loaded_msg.emit([])
-                return
-            lines = [
-                line.strip()
-                for line in stdout.split("\n")
-                if line.strip() and line.strip() != "."
-            ][:100]
+            # “搜索本目录”逻辑：直接对当前已加载的目录条目进行本地过滤，
+            # 既保证跨平台（Windows/Linux）100% 可用，又能做到无延迟瞬间响应。
+            keyword_lower = keyword.lower()
+            matched_entries = []
+            
+            raw_entries = getattr(self, "last_raw_entries", [])
+            for entry in raw_entries:
+                # 忽略隐藏文件的逻辑
+                if not self.show_hidden and entry.filename.startswith("."):
+                    continue
+                    
+                if keyword_lower in entry.filename.lower():
+                    matched_entries.append(entry)
 
-            async def get_entry(line_path):
-                clean_name = line_path[2:] if line_path.startswith("./") else line_path
-                full_path = f"{path}/{clean_name}".replace("//", "/")
-                try:
-                    attrs = await self.info.sftp.stat(full_path)
-
-                    class SearchEntry:
-                        def __init__(self, name, a):
-                            self.filename, self.attrs = name, a
-
-                    return SearchEntry(clean_name, attrs)
-                except Exception as e:
-                    logger.debug(f"Search entry stat failed for {clean_name}: {e}")
-                    return None
-
-            tasks = [get_entry(line) for line in lines]
-            results = await asyncio.gather(*tasks)
-            self.current_folder_loaded_msg.emit([r for r in results if r])
+            self.current_folder_loaded_msg.emit(seq, matched_entries)
         except Exception as e:
             logger.warning(f"搜索远端文件失败: {e}")
-            self.current_folder_loaded_msg.emit([])
+            self.current_folder_loaded_msg.emit(seq, [])
 
-    async def fetch_current_dir(self, path: str):
+    async def fetch_current_dir(self, path: str, seq: int):
         try:
             entries = []
             all_entries = []
@@ -189,7 +185,7 @@ class BaseRemoteTreeWidget(QTreeView):
                         continue
                     entries.append(entry)
             self.last_raw_entries = all_entries
-            self.current_folder_loaded_msg.emit(entries)
+            self.current_folder_loaded_msg.emit(seq, entries)
         except Exception as e:
             logger.warning(f"拉取目录失败: {e}")
 
@@ -270,8 +266,15 @@ class BaseRemoteTreeWidget(QTreeView):
                 )
             item.appendRow(row_items)
 
-    @Slot(list)
-    def add_new_file(self, new_files: list):
+    @Slot(int, list)
+    def add_new_file(self, seq: int, new_files: list):
+        if seq != self._refresh_seq:
+            return  # 丢弃过期任务的数据
+
+        # 在真实数据返回前清空可能的占位节点（例如加载中/搜索中）
+        self.model.removeRows(0, self.model.rowCount())
+        self.all_files_dict.clear()
+
         for entry in new_files:
             filename = entry.filename
             if filename in self.all_files_dict:

@@ -13,7 +13,10 @@ from PySide6.QtWidgets import (
     QComboBox,
     QSplitter,
     QButtonGroup,
+    QSizePolicy,
 )
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize
 
 from quicksftp.ui.components.terminal_widget import SSHPtyWidget
 from quicksftp.ui.views.local_widgets import LocalFileWidget
@@ -24,9 +27,6 @@ from quicksftp.ui.views.directory_diff_dialog import DirectoryDiffDialog
 
 logger = logging.getLogger(__name__)
 
-
-from PySide6.QtGui import QIcon
-from PySide6.QtCore import QSize
 
 
 class ControlWidget(QWidget):
@@ -67,6 +67,14 @@ class ControlWidget(QWidget):
             layout.addWidget(btn)
             self.btn_group.addButton(btn, i)
 
+        # 添加紧跟着最后一个按钮的快捷面板开关
+        self.snippets_toggle_btn = QPushButton("⚡面板")
+        self.snippets_toggle_btn.setCheckable(True)
+        self.snippets_toggle_btn.setChecked(True)
+        self.snippets_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.snippets_toggle_btn.setToolTip("显示/隐藏快捷面板")
+        layout.addWidget(self.snippets_toggle_btn)
+
         layout.addStretch()
 
         # 默认选中第一项并初始化主题
@@ -104,6 +112,18 @@ class ControlWidget(QWidget):
                     background: {"#2b2d2e" if is_dark else "#ebebeb"};
                 }}
             """)
+        
+        self.snippets_toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                border: none;
+                background: transparent;
+                padding: 10px 0;
+                color: {"#888" if is_dark else "#555"};
+            }}
+            QPushButton:checked {{
+                color: {"#fff" if is_dark else "#000"};
+            }}
+        """)
 
     def setCurrentRow(self, row: int):
         btn = self.btn_group.button(row)
@@ -155,18 +175,27 @@ class UserSFTPWidget(QWidget):
         self.remote_file_widget.set_menu()
         self.remote_file_widget.path_change_msg.connect(self.display_path)
 
+        self.path_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.search_edit.setFixedWidth(140)
+
         # 组装右侧（远端）的顶栏
         remote_hbox = QHBoxLayout()
+        remote_hbox.setContentsMargins(0, 0, 0, 5)
+        remote_hbox.setSpacing(6)
+        
+        # Navigation
         remote_hbox.addWidget(self.back_button)
         remote_hbox.addWidget(self.path_combo)
-        remote_hbox.addWidget(self.search_edit)
-
-        remote_hbox.addWidget(self.show_hidden_btn)
-
-        remote_hbox.addWidget(self.diff_btn)
-
-        remote_hbox.addWidget(self.get_button)
+        
+        # Actions
         remote_hbox.addWidget(self.put_button)
+        remote_hbox.addWidget(self.get_button)
+        remote_hbox.addWidget(self.diff_btn)
+        remote_hbox.addWidget(self.show_hidden_btn)
+        
+        # Search
+        remote_hbox.addSpacing(10)
+        remote_hbox.addWidget(self.search_edit)
 
         remote_vbox = QVBoxLayout()
         remote_vbox.setContentsMargins(0, 0, 0, 0)
@@ -262,10 +291,6 @@ class UserSFTPWidget(QWidget):
         self.transfer_dialog = TransferSetupWidget(self.sftp_tab_widget, mode="PUT")
         self.transfer_dialog.show()
 
-    def back_parent_path(self):
-        self.info.chdir("..")
-        self.remote_file_widget.refresh()  # 返回上级时也强制刷新
-        self.display_path(self.info.realpath("."))
 
     @Slot(str)
     def display_path(self, path: str):
@@ -323,6 +348,17 @@ class TerminalPanel(QWidget):
         # 1. 实例化原有终端组件
         self.ssh_pty_widget = SSHPtyWidget(self.info)
 
+        # Monitor widget
+        from quicksftp.ui.views.monitor_widget import SystemMonitorWidget
+        self.monitor_widget = SystemMonitorWidget(self.info)
+
+        # Left Vertical Splitter
+        self.left_v_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.left_v_splitter.addWidget(self.ssh_pty_widget)
+        self.left_v_splitter.addWidget(self.monitor_widget)
+        self.left_v_splitter.setStretchFactor(0, 10)
+        self.left_v_splitter.setStretchFactor(1, 1)
+
         # 2. 生成站点的唯一标识 (例如 root@192.168.1.10:22)
         site_id = f"{self.info.username}@{self.info.host}:{self.info.port}"
 
@@ -334,10 +370,23 @@ class TerminalPanel(QWidget):
             self.ssh_pty_widget.bridge.on_input
         )
 
-        self.splitter.addWidget(self.ssh_pty_widget)
         self.splitter.addWidget(self.snippets_widget)
+        self.splitter.addWidget(self.left_v_splitter)
 
-        self.splitter.setStretchFactor(0, 4)
+        self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
 
         layout.addWidget(self.splitter)
+        self._apply_settings()
+
+    def toggle_snippets(self, checked: bool):
+        self.snippets_widget.setVisible(checked)
+        if checked:
+            total = self.splitter.width()
+            snippet_w = int(total * 0.3)
+            self.splitter.setSizes([snippet_w, total - snippet_w])
+
+    def _apply_settings(self):
+        from quicksftp.core.settings import SettingsManager
+        enabled = SettingsManager.get("enable_monitor", False)
+        self.monitor_widget.set_enabled(enabled)
