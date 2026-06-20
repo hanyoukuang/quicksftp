@@ -119,6 +119,8 @@ class SiteManagerWidget(QWidget):
 
         self.auth_stacked_widget = self._init_auth_panel()
 
+        self.proxy_panel = self._init_proxy_panel()
+
         action_layout = QHBoxLayout()
         action_layout.addStretch()
         self.btn_save = QPushButton("💾 保存")
@@ -131,6 +133,8 @@ class SiteManagerWidget(QWidget):
         layout.addWidget(QLabel("<b>连接详情</b>"))
         layout.addLayout(form_layout)
         layout.addWidget(self.auth_stacked_widget)
+        layout.addWidget(QLabel("<b>高级设置</b>"))
+        layout.addWidget(self.proxy_panel)
         layout.addStretch()
         layout.addLayout(action_layout)
         return widget
@@ -166,6 +170,46 @@ class SiteManagerWidget(QWidget):
 
         return stacked
 
+    def _init_proxy_panel(self) -> QWidget:
+        widget = QWidget()
+        layout = QFormLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.proxy_type_combo = QComboBox()
+        self.proxy_type_combo.addItems(["无 (直接连接)", "SSH 跳板机 (ProxyJump)", "SOCKS5 代理", "HTTP 代理"])
+        self.proxy_type_combo.currentIndexChanged.connect(self.on_proxy_type_changed)
+
+        self.proxy_host_edit = QLineEdit()
+        self.proxy_port_edit = QLineEdit("22")
+        self.proxy_user_edit = QLineEdit()
+        self.proxy_pass_edit = QLineEdit()
+        self.proxy_pass_edit.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.proxy_fields = QWidget()
+        proxy_form = QFormLayout(self.proxy_fields)
+        proxy_form.setContentsMargins(0, 0, 0, 0)
+        proxy_form.addRow("主机:", self.proxy_host_edit)
+        proxy_form.addRow("端口:", self.proxy_port_edit)
+        proxy_form.addRow("用户:", self.proxy_user_edit)
+        proxy_form.addRow("密码:", self.proxy_pass_edit)
+        self.proxy_fields.setVisible(False)
+
+        layout.addRow("代理设置:", self.proxy_type_combo)
+        layout.addRow(self.proxy_fields)
+        return widget
+
+    def on_proxy_type_changed(self, index):
+        self.proxy_fields.setVisible(index > 0)
+        if index == 1:
+            if not self.proxy_port_edit.text():
+                self.proxy_port_edit.setText("22")
+        elif index == 2:
+            if not self.proxy_port_edit.text() or self.proxy_port_edit.text() == "22":
+                self.proxy_port_edit.setText("1080")
+        elif index == 3:
+            if not self.proxy_port_edit.text() or self.proxy_port_edit.text() == "22":
+                self.proxy_port_edit.setText("8080")
+
     def closeEvent(self, event):
         if hasattr(self, "userinfo_db") and self.userinfo_db:
             self.userinfo_db.close()
@@ -199,14 +243,20 @@ class SiteManagerWidget(QWidget):
         export_data = {"passwords": [], "keys": []}
 
         # 获取并序列化密码登录站点
-        # query_all_password 返回: (id, host, port, username, password)
+        # query_all_password 返回: (id, host, port, username, password, proxy_config)
         for r in self.userinfo_db.query_all_password():
             export_data["passwords"].append(
-                {"host": r[1], "port": r[2], "username": r[3], "password": r[4]}
+                {
+                    "host": r[1],
+                    "port": r[2],
+                    "username": r[3],
+                    "password": r[4],
+                    "proxy_config": r[5] if len(r) > 5 else None,
+                }
             )
 
         # 获取并序列化私钥登录站点
-        # query_all_key 返回: (id, host, port, username, key_path, passphrase)
+        # query_all_key 返回: (id, host, port, username, key_path, passphrase, proxy_config)
         for r in self.userinfo_db.query_all_key():
             export_data["keys"].append(
                 {
@@ -215,6 +265,7 @@ class SiteManagerWidget(QWidget):
                     "username": r[3],
                     "key_path": r[4],
                     "passphrase": r[5],
+                    "proxy_config": r[6] if len(r) > 6 else None,
                 }
             )
 
@@ -251,6 +302,7 @@ class SiteManagerWidget(QWidget):
                     p.get("port", 22),
                     p.get("username", ""),
                     p.get("password", ""),
+                    p.get("proxy_config", None),
                 )
 
             # 导入私钥登录站点
@@ -262,6 +314,7 @@ class SiteManagerWidget(QWidget):
                     k.get("username", ""),
                     k.get("key_path", ""),
                     k.get("passphrase", ""),
+                    k.get("proxy_config", None),
                 )
 
             self.load_sites()
@@ -328,6 +381,28 @@ class SiteManagerWidget(QWidget):
         self.key_path_edit.clear()
         self.passphrase_edit.clear()
         self.auth_type_combo.setCurrentIndex(0)
+        self.proxy_type_combo.setCurrentIndex(0)
+        self.proxy_host_edit.clear()
+        self.proxy_port_edit.setText("22")
+        self.proxy_user_edit.clear()
+        self.proxy_pass_edit.clear()
+
+    def _load_proxy_config(self, proxy_config: Optional[str]):
+        if proxy_config:
+            try:
+                config = json.loads(proxy_config)
+                ptype = config.get("type")
+                if ptype in ("ssh", "socks5", "http"):
+                    idx = 1 if ptype == "ssh" else (2 if ptype == "socks5" else 3)
+                    self.proxy_type_combo.setCurrentIndex(idx)
+                    self.proxy_host_edit.setText(config.get("host", ""))
+                    self.proxy_port_edit.setText(str(config.get("port", "")))
+                    self.proxy_user_edit.setText(config.get("username", ""))
+                    self.proxy_pass_edit.setText(config.get("password", ""))
+                    return
+            except Exception:
+                pass
+        self.proxy_type_combo.setCurrentIndex(0)
 
     def on_site_selected(self, item: QTreeWidgetItem, column: int = 0):
         data = item.data(0, Qt.ItemDataRole.UserRole)
@@ -343,6 +418,7 @@ class SiteManagerWidget(QWidget):
                 self.username_edit.setText(record[3])
                 self.password_edit.setText(record[4])
                 self.auth_type_combo.setCurrentIndex(0)
+                self._load_proxy_config(record[5] if len(record) > 5 else None)
 
         elif data["type"] == "key":
             record = self.userinfo_db.query_idx_key(data["id"])
@@ -353,6 +429,7 @@ class SiteManagerWidget(QWidget):
                 self.key_path_edit.setText(record[4])
                 self.passphrase_edit.setText(record[5])
                 self.auth_type_combo.setCurrentIndex(1)
+                self._load_proxy_config(record[6] if len(record) > 6 else None)
 
     @staticmethod
     def _parse_port(text: str) -> Optional[int]:
@@ -365,6 +442,20 @@ class SiteManagerWidget(QWidget):
         except ValueError:
             return None
 
+    def _get_proxy_config(self) -> Optional[str]:
+        idx = self.proxy_type_combo.currentIndex()
+        if idx > 0:
+            ptype = "ssh" if idx == 1 else ("socks5" if idx == 2 else "http")
+            port = self._parse_port(self.proxy_port_edit.text()) or (22 if idx == 1 else (1080 if idx == 2 else 8080))
+            return json.dumps({
+                "type": ptype,
+                "host": self.proxy_host_edit.text().strip(),
+                "port": port,
+                "username": self.proxy_user_edit.text().strip(),
+                "password": self.proxy_pass_edit.text()
+            })
+        return None
+
     def save_site(self):
         """保存或更新当前站点"""
         host = self.host_edit.text().strip()
@@ -374,6 +465,7 @@ class SiteManagerWidget(QWidget):
             return
         username = self.username_edit.text().strip()
         auth_type = "password" if self.auth_type_combo.currentIndex() == 0 else "key"
+        proxy_config = self._get_proxy_config()
 
         if not host or not username:
             QMessageBox.warning(self, "错误", "主机和用户名不能为空！")
@@ -390,12 +482,12 @@ class SiteManagerWidget(QWidget):
                     self.userinfo_db.del_idx_password(idx)
                 else:
                     self.userinfo_db.del_idx_key(idx)
-                self.insert_new_record(host, port, username, auth_type)
+                self.insert_new_record(host, port, username, auth_type, proxy_config)
             else:
                 # 正常更新
                 if auth_type == "password":
                     self.userinfo_db.update_password(
-                        idx, host, port, username, self.password_edit.text()
+                        idx, host, port, username, self.password_edit.text(), proxy_config
                     )
                 else:
                     self.userinfo_db.update_key(
@@ -405,20 +497,21 @@ class SiteManagerWidget(QWidget):
                         username,
                         self.key_path_edit.text(),
                         self.passphrase_edit.text(),
+                        proxy_config
                     )
         else:
             # 全新插入
-            self.insert_new_record(host, port, username, auth_type)
+            self.insert_new_record(host, port, username, auth_type, proxy_config)
 
         self.load_sites()
         QMessageBox.information(self, "成功", "站点已保存。")
 
     def insert_new_record(
-        self, host: str, port: int, username: str, auth_type: str
+        self, host: str, port: int, username: str, auth_type: str, proxy_config: Optional[str] = None
     ) -> None:
         if auth_type == "password":
             self.userinfo_db.insert_password(
-                host, port, username, self.password_edit.text()
+                host, port, username, self.password_edit.text(), proxy_config
             )
         else:
             self.userinfo_db.insert_key(
@@ -427,6 +520,7 @@ class SiteManagerWidget(QWidget):
                 username,
                 self.key_path_edit.text(),
                 self.passphrase_edit.text(),
+                proxy_config
             )
 
     def delete_site(self):
@@ -462,6 +556,8 @@ class SiteManagerWidget(QWidget):
         # 检查是否未保存
         # self.save_site()
 
+        proxy_config = self._get_proxy_config()
+
         if self.auth_type_combo.currentIndex() == 0:
             password = self.password_edit.text()
             if not password:
@@ -474,6 +570,7 @@ class SiteManagerWidget(QWidget):
                     "username": username,
                     "password": password,
                     "verify_host_key": self.verify_host_checkbox.isChecked(),
+                    "proxy_config": proxy_config,
                 }
             )
         else:
@@ -489,5 +586,6 @@ class SiteManagerWidget(QWidget):
                     "client_keys": [key_path],
                     "passphrase": self.passphrase_edit.text(),
                     "verify_host_key": self.verify_host_checkbox.isChecked(),
+                    "proxy_config": proxy_config,
                 }
             )

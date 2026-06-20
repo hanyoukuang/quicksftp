@@ -36,6 +36,7 @@ class SSHSFTPInfo(QThread):
         passphrase: Optional[str] = None,
         verify_host_key: bool = True,
         startup_commands: Optional[List[str]] = None,
+        proxy_config: Optional[str] = None,
     ):
         super().__init__()
         self.host = host
@@ -46,6 +47,8 @@ class SSHSFTPInfo(QThread):
         self.passphrase = passphrase
         self.verify_host_key = verify_host_key
         self.startup_commands = startup_commands or []
+        self.proxy_config = proxy_config
+        self.tunnel = None
 
         # 用于在主线程和后台线程间同步连接状态
         self.connect_is_ready = False
@@ -123,8 +126,37 @@ class SSHSFTPInfo(QThread):
 
     async def get_session(self) -> None:
         """异步建立 SSH 连接、初始化 SFTP 客户端及终端进程"""
+        import json
+        sock = None
 
         try:
+            if self.proxy_config:
+                pconf = json.loads(self.proxy_config)
+                ptype = pconf.get("type")
+                if ptype == "ssh":
+                    self.tunnel = await asyncssh.connect(
+                        host=pconf.get("host"),
+                        port=pconf.get("port", 22),
+                        username=pconf.get("username"),
+                        password=pconf.get("password"),
+                        known_hosts=asyncssh.SSHKnownHosts() if self.verify_host_key else None,
+                        connect_timeout=10,
+                    )
+                elif ptype in ("socks5", "http"):
+                    from python_socks.async_.asyncio import Proxy
+                    import urllib.parse
+                    
+                    url = f"{ptype}://"
+                    user = pconf.get("username", "")
+                    pwd = pconf.get("password", "")
+                    if user or pwd:
+                        url += f"{urllib.parse.quote(user)}:{urllib.parse.quote(pwd)}@"
+                    url += f"{pconf.get('host')}:{pconf.get('port')}"
+                    
+                    proxy = Proxy.from_url(url)
+                    # Create socket connected to the target server through proxy
+                    sock = await proxy.connect(dest_host=self.host, dest_port=self.port)
+
             self.connection = await asyncssh.connect(
                 host=self.host,
                 port=self.port,
@@ -136,11 +168,16 @@ class SSHSFTPInfo(QThread):
                 connect_timeout=10,
                 keepalive_interval=30,
                 keepalive_count_max=3,
+                tunnel=self.tunnel,
+                sock=sock,
             )
         except asyncssh.HostKeyNotVerifiable as e:
             self._host_key_warning = True
             self._host_key_fingerprint = str(e)
             return
+        except Exception as e:
+            # 捕获跳板机或主机的其他连接错误
+            raise e
 
         # 真正实现 TOFU (Trust On First Use)：如果用户选择跳过验证，说明已确认信任，此时将密钥写入 ~/.ssh/known_hosts
         if not self.verify_host_key:
@@ -288,6 +325,8 @@ class SSHSFTPInfo(QThread):
                 self.process.close()
             if getattr(self, "connection", None):
                 self.connection.close()
+            if getattr(self, "tunnel", None):
+                self.tunnel.close()
 
             # 2. 找出当前事件循环中除了“清理任务本身”之外的所有挂起的 Task
             current_task = asyncio.current_task(self.loop)

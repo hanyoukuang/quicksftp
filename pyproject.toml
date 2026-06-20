@@ -16,6 +16,7 @@ dependencies = [
     "nuitka>=4.1.2",
     "pyside6>=6.11.1",
     "pyte>=0.8.2",
+    "python-socks[asyncio]>=2.4.4",
 ]
 
 [project.scripts]

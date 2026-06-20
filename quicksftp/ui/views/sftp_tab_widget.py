@@ -27,6 +27,7 @@ class SFTPTabWidget(QWidget):
         client_keys: list = None,
         passphrase: str = None,
         verify_host_key: bool = True,
+        proxy_config: str = None,
     ):
         super().__init__()
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -38,6 +39,7 @@ class SFTPTabWidget(QWidget):
         self._client_keys = client_keys
         self._passphrase = passphrase
         self._verify_host_key = verify_host_key
+        self._proxy_config = proxy_config
 
         self._init_session()
 
@@ -52,7 +54,7 @@ class SFTPTabWidget(QWidget):
 
         self._health_timer = QTimer(self)
         self._health_timer.timeout.connect(self._check_health)
-        self._health_timer.start(30000)
+        self._health_timer.start(10000)
         self._health_status = True
 
     def _init_session(self):
@@ -64,6 +66,7 @@ class SFTPTabWidget(QWidget):
             self._client_keys,
             self._passphrase,
             self._verify_host_key,
+            proxy_config=self._proxy_config,
         )
         self.info.start()
         self.info.wait_for_connection()
@@ -92,6 +95,7 @@ class SFTPTabWidget(QWidget):
                     self._client_keys,
                     self._passphrase,
                     verify_host_key=False,
+                    proxy_config=self._proxy_config,
                 )
                 self.info.start()
                 self.info.wait_for_connection()
@@ -104,7 +108,7 @@ class SFTPTabWidget(QWidget):
 
     def _check_health(self):
         try:
-            self.info.getcwd()
+            self.info.realpath('.')
             if not self._health_status:
                 self.window().tab_widget.setTabText(
                     self.window().tab_widget.indexOf(self),

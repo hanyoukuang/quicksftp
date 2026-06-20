@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QComboBox,
     QSplitter,
-    QMessageBox,
     QButtonGroup,
 )
 
