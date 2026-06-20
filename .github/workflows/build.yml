@@ -46,7 +46,7 @@ jobs:
       - name: Build with Nuitka (macOS)
         if: runner.os == 'macOS'
         run: |
-          uv run python -m nuitka --assume-yes-for-downloads --standalone --lto=yes --python-flag=no_asserts,no_docstrings --macos-create-app-bundle --macos-app-name="QuickSFTP" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
+          uv run python -m nuitka --assume-yes-for-downloads --standalone --lto=yes --python-flag=no_asserts,no_docstrings --macos-create-app-bundle --macos-app-name="QuickSFTP" --macos-app-protected-resource="NSDesktopFolderUsageDescription:QuickSFTP 需要访问您的桌面，以便您能在桌面上传或下载文件。" --macos-app-protected-resource="NSDocumentsFolderUsageDescription:QuickSFTP 需要访问您的文稿，以便您能在文稿文件夹上传或下载文件。" --macos-app-protected-resource="NSDownloadsFolderUsageDescription:QuickSFTP 需要访问您的下载文件夹，以便您能在下载文件夹上传或下载文件。" --macos-app-protected-resource="NSRemovableVolumesUsageDescription:QuickSFTP 需要访问您的外部磁盘，以便您能在外部磁盘上传或下载文件。" --plugin-enable=pyside6 --include-data-dir=quicksftp/assets=quicksftp/assets main.py
           mv main.app QuickSFTP.app
           tar -czf QuickSFTP-macOS-portable.tar.gz QuickSFTP.app
           mkdir dmg_dir
@@ -64,7 +64,7 @@ jobs:
           $issContent = @"
           [Setup]
           AppName=QuickSFTP
-          AppVersion=1.1.1
+          AppVersion=1.1.2
           DefaultDirName={autopf}\QuickSFTP
           DefaultGroupName=QuickSFTP
           OutputDir=.
