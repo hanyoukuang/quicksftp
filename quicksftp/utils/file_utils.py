@@ -2,111 +2,54 @@
 import os
 from typing import Tuple
 
-# 常见二进制文件扩展名集合
-# 将其定义为常量，方便统一维护和修改
-BINARY_EXTENSIONS = (
-    # 图像
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".gif",
-    ".bmp",
-    ".tiff",
-    ".tif",
-    ".webp",
-    ".ico",
-    ".psd",
-    ".ai",
-    ".svgz",
-    # 视频 & 音频
-    ".mp4",
-    ".mkv",
-    ".avi",
-    ".mov",
-    ".wmv",
-    ".flv",
-    ".webm",
-    ".mp3",
-    ".wav",
-    ".flac",
-    ".aac",
-    ".ogg",
-    ".wma",
-    ".m4a",
-    ".mid",
-    ".midi",
-    # 文档（带格式的，不建议直接用文本编辑器打开）
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".xls",
-    ".xlsx",
-    ".ppt",
-    ".pptx",
-    ".odt",
-    ".ods",
-    ".odp",
-    # 压缩 & 归档
-    ".zip",
-    ".rar",
-    ".7z",
-    ".tar",
-    ".gz",
-    ".bz2",
-    ".xz",
-    ".tgz",
-    ".cab",
-    ".iso",
-    ".img",
-    ".dmg",
-    # 可执行 & 库
-    ".exe",
-    ".dll",
-    ".sys",
-    ".so",
-    ".o",
-    ".obj",
-    ".lib",
-    ".a",
-    ".app",  # macOS 应用包（实际是目录，但通常视为二进制）
-    # 数据库
-    ".db",
-    ".sqlite",
-    ".sqlite3",
-    ".mdb",
-    ".accdb",
-    ".dbf",
-    # 字体
-    ".ttf",
-    ".otf",
-    ".woff",
-    ".woff2",
-    ".eot",
-    # 其他常见二进制
-    ".bin",
-    ".dat",
-    ".class",
-    ".pyc",
-    ".pyo",
-    ".jar",
-    ".apk",
-    ".ipa",
-    ".swf",
-    ".elf",
-    ".rom",
-)
-
+import mimetypes
 
 def is_binary(filename: str) -> bool:
     """
-    根据文件扩展名快速判断是否为常见二进制文件。
-    在双击打开远端文件时，通过此函数拦截二进制文件，防止乱码或程序卡死。
+    使用 Python 内置的 mimetypes 库进行准确的二进制文件判断。
+    相比硬编码扩展名列表，mimetypes 支持更广泛的标准 MIME 类型，
+    并能够自动适配操作系统的 MIME 数据库。
 
     :param filename: 文件名或包含文件名的路径
-    :return: 如果是二进制文件返回 True，否则返回 False
+    :return: 如果判断为二进制文件返回 True，否则返回 False
     """
-    _, ext = os.path.splitext(filename.lower())
-    return ext in BINARY_EXTENSIONS
+    if not mimetypes.inited:
+        mimetypes.init()
+        
+    mime_type, _ = mimetypes.guess_type(filename)
+    
+    if mime_type is None:
+        # 如果 mimetypes 无法识别（例如无后缀的文件），使用黑名单过滤绝对的二进制类型
+        _, ext = os.path.splitext(filename.lower())
+        fallback_binaries = {
+            ".bin", ".dat", ".pyc", ".pyo", ".class", ".exe", ".dll", 
+            ".so", ".o", ".a", ".lib", ".db", ".sqlite", ".iso", ".img", 
+            ".dmg", ".apk", ".ipa", ".elf", ".rom"
+        }
+        return ext in fallback_binaries
+
+    # 明确是 text/* 类型的肯定是文本
+    if mime_type.startswith("text/"):
+        return False
+        
+    # 一些 application/* 类型其实是纯文本格式
+    text_application_types = {
+        "application/json",
+        "application/xml",
+        "application/javascript",
+        "application/x-javascript",
+        "application/x-sh",
+        "application/x-python-code",
+        "application/sql",
+        "application/yaml",
+        "application/x-yaml",
+        "application/toml",
+    }
+    if mime_type in text_application_types:
+        return False
+        
+    # 其余 (image/*, video/*, audio/*, 大部分 application/*) 都认为是二进制
+    return True
 
 
 def path_stand(src: str, loc: str) -> Tuple[str, str]:
