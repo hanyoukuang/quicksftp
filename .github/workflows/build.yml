@@ -64,7 +64,7 @@ jobs:
           $issContent = @"
           [Setup]
           AppName=QuickSFTP
-          AppVersion=1.1.0
+          AppVersion=1.1.1
           DefaultDirName={autopf}\QuickSFTP
           DefaultGroupName=QuickSFTP
           OutputDir=.

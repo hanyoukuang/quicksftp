@@ -64,6 +64,7 @@ class PyqTerminal(QWidget):
         self._raw_buffer = ""  # For OSC 52 interception
 
         self.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.setAttribute(Qt.WA_InputMethodEnabled, True)  # 允许操作系统输入法 (IME)
         self.setMouseTracking(True)  # Track mouse for TUI motion events
 
         # Scrollbar
@@ -350,8 +351,10 @@ class PyqTerminal(QWidget):
             return
 
         if event.button() == Qt.LeftButton:
+            self._mouse_press_pos = event.position()
+            self._has_dragged = False
             self.selection_start = self._mouse_to_grid(event.position())
-            self.selection_end = self.selection_start
+            self.selection_end = None
             self.update()
         super().mousePressEvent(event)
 
@@ -361,27 +364,41 @@ class PyqTerminal(QWidget):
             return
 
         # Copy automatically on select release
-        if (
-            self.selection_start
-            and self.selection_end
-            and self.selection_start != self.selection_end
-        ):
+        if getattr(self, "_has_dragged", False) and self.selection_start and self.selection_end:
             self.copy_selection(clear=False)
+        else:
+            self.selection_start = None
+            self.selection_end = None
+            self.update()
 
+        self._has_dragged = False
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         grid_pos = self._mouse_to_grid(event.position())
+        
+        # TUI mouse tracking throttle
         if getattr(self, "_last_mouse_grid", None) == grid_pos:
-            return
-        self._last_mouse_grid = grid_pos
+            tui_throttled = True
+        else:
+            tui_throttled = False
 
         if self._send_mouse_event(event, is_move=True):
+            # If TUI handled it, we only update last_mouse_grid to prevent spamming
+            if not tui_throttled:
+                self._last_mouse_grid = grid_pos
             return
 
+        self._last_mouse_grid = grid_pos
+
         if event.buttons() & Qt.LeftButton:
-            self.selection_end = grid_pos
-            self.update()
+            if hasattr(self, "_mouse_press_pos"):
+                diff = event.position() - self._mouse_press_pos
+                if diff.manhattanLength() >= 3:
+                    self._has_dragged = True
+                    self.selection_end = grid_pos
+                    self.update()
+                    
         super().mouseMoveEvent(event)
 
     def _get_selection_range(self):
@@ -448,16 +465,77 @@ class PyqTerminal(QWidget):
             # Send pasted text to the PTY
             self.keyPressed.emit(text)
 
+    def inputMethodEvent(self, event):
+        """捕获中文等输入法的上屏内容"""
+        commit_str = event.commitString()
+        if commit_str:
+            self.keyPressed.emit(commit_str)
+        event.accept()
+
+    def inputMethodQuery(self, query):
+        """让输入法候选框精确跟随光标位置"""
+        if query == Qt.InputMethodQuery.ImCursorRectangle:
+            cursor = self.screen.cursor
+            if not getattr(cursor, "hidden", False):
+                return QRect(
+                    self.padding + cursor.x * self.char_width,
+                    self.padding + cursor.y * self.char_height,
+                    self.char_width,
+                    self.char_height,
+                )
+        return super().inputMethodQuery(query)
+
     def keyPressEvent(self, event):
+        import sys
         if event.matches(QKeySequence.Copy):
-            self.copy_selection()
-            return
+            if sys.platform != "darwin" and not self._get_selection_range():
+                # On Windows/Linux, Ctrl+C is Copy. If no text is selected, do not copy, send SIGINT!
+                pass
+            else:
+                self.copy_selection()
+                return
         if event.matches(QKeySequence.Paste):
             self.paste_clipboard()
             return
 
         key = event.key()
         text = event.text()
+        mods = event.modifiers()
+
+        # Qt Modifier Trap: On macOS, ControlModifier is Command(Cmd), MetaModifier is Control(Ctrl)
+        if sys.platform == "darwin":
+            physical_ctrl = bool(mods & Qt.MetaModifier)
+            physical_cmd = bool(mods & Qt.ControlModifier)
+        else:
+            physical_ctrl = bool(mods & Qt.ControlModifier)
+            physical_cmd = False
+
+        if physical_cmd:
+            return  # Ignore unhandled Command shortcuts
+
+        # Handle Control character combinations explicitly
+        if physical_ctrl:
+            if Qt.Key_A <= key <= Qt.Key_Z:
+                self.keyPressed.emit(chr(key - Qt.Key_A + 1))
+                return
+            elif key == Qt.Key_BracketLeft:
+                self.keyPressed.emit("\x1b")
+                return
+            elif key == Qt.Key_Backslash:
+                self.keyPressed.emit("\x1c")
+                return
+            elif key == Qt.Key_BracketRight:
+                self.keyPressed.emit("\x1d")
+                return
+            elif key == Qt.Key_AsciiCircum:
+                self.keyPressed.emit("\x1e")
+                return
+            elif key == Qt.Key_Underscore:
+                self.keyPressed.emit("\x1f")
+                return
+            elif key == Qt.Key_Space:
+                self.keyPressed.emit("\x00")
+                return
 
         # Basic key mapping for PTY interaction
         if key == Qt.Key_Return or key == Qt.Key_Enter:
