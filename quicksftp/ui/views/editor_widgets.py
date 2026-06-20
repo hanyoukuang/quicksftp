@@ -158,6 +158,46 @@ class Edit(QTextEdit):
             self.save_file_action()
 
 
+class LocalEdit(QTextEdit):
+    def __init__(self, parent_widget, path: str, text: str):
+        super().__init__(parent=parent_widget)
+        self.path = path
+        self.original_text = text
+        self.setText(text)
+        self.setWindowFlags(Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.highlighter = SimpleHighlighter(self.document())
+
+    def keyPressEvent(self, event):
+        if (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and event.key() == Qt.Key.Key_S:
+            self.save_file_action()
+        else:
+            super().keyPressEvent(event)
+
+    def save_file_action(self):
+        now_text = self.toPlainText()
+        if now_text == self.original_text:
+            return
+        try:
+            with open(self.path, "w", encoding="utf-8") as f:
+                f.write(now_text)
+            self.original_text = now_text
+            QMessageBox.information(self, "成功", "本地文件已快捷保存！")
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"保存失败:\n{e}")
+
+    def closeEvent(self, event: QCloseEvent):
+        now_text = self.toPlainText()
+        if now_text == self.original_text:
+            return
+        reply = QMessageBox.question(
+            self, "文件", "文件有改动，是否保存",
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+        )
+        if reply == QMessageBox.StandardButton.Ok:
+            self.save_file_action()
+
+
 class ExternalEditorWatcher(QObject):
     """
     外部编辑器监控类：

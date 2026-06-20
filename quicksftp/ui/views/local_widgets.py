@@ -189,6 +189,36 @@ class LocalFileWidget(QWidget):
                 return
             self.tree.setRootIndex(index)
             self.path_edit.setText(path)
+        else:
+            self.open_internal_editor(path)
+
+    def open_internal_editor(self, path: str):
+        import os
+        from PySide6.QtWidgets import QMessageBox
+        from quicksftp.utils.file_utils import is_binary
+        
+        if is_binary(path):
+            QMessageBox.warning(self, "无法编辑", "这是一个二进制文件，不支持内置编辑器打开。")
+            return
+            
+        try:
+            if os.path.getsize(path) > 5 * 1024 * 1024:
+                QMessageBox.warning(self, "文件过大", "文件大于 5MB，请使用系统默认程序打开。")
+                return
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+                
+            from quicksftp.ui.views.editor_widgets import LocalEdit
+            # Maintain a reference to prevent garbage collection
+            if not hasattr(self, "_local_editors"):
+                self._local_editors = []
+            edit = LocalEdit(self, path, text)
+            self._local_editors.append(edit)
+            edit.show()
+        except UnicodeDecodeError:
+            QMessageBox.warning(self, "格式错误", "这不是一个有效的 UTF-8 文本文件，无法打开。")
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"无法打开文件:\n{e}")
 
     def go_up(self):
         current_path = self.path_edit.text()
@@ -212,6 +242,17 @@ class LocalFileWidget(QWidget):
         new_file_action.triggered.connect(lambda *args: self.new_file(index))
 
         if index.isValid():
+            path = self.model.filePath(index)
+            if not self.model.isDir(index):
+                from PySide6.QtGui import QDesktopServices
+                from PySide6.QtCore import QUrl
+                menu.addSeparator()
+                edit_action = menu.addAction("📝 内置编辑器打开")
+                edit_action.triggered.connect(lambda *args: self.open_internal_editor(path))
+                
+                ext_action = menu.addAction("🖊️ 系统默认程序打开")
+                ext_action.triggered.connect(lambda *args: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
+
             menu.addSeparator()
             rename_action = menu.addAction("✏️ 重命名")
             rename_action.triggered.connect(lambda *args: self.rename(index))
