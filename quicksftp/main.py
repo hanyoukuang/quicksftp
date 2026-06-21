@@ -37,6 +37,11 @@ class MainWindow(QMainWindow):
         self.status_bar = self.statusBar()
         self.status_label = QLabel(" ⚡ 准备就绪 ")
         self.status_bar.addWidget(self.status_label)
+        
+        from quicksftp.ui.views.monitor_widget import SystemMonitorWidget
+        self.monitor_widget = SystemMonitorWidget(None)
+        self.status_bar.addWidget(self.monitor_widget, 1)
+        self.monitor_widget.setVisible(False)
 
         # 2. 顶部工具栏 (随时唤出站点管理器)
         toolbar = self.addToolBar("主控制栏")
@@ -66,6 +71,8 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, index: int):
         if index == -1:
             self.status_label.setText(" ⚡ 准备就绪 - 没有打开的连接 ")
+            self.monitor_widget.setVisible(False)
+            self.monitor_widget.set_info(None)
             return
 
         widget = self.tab_widget.widget(index)
@@ -79,6 +86,10 @@ class MainWindow(QMainWindow):
                 else "🔴 连接断开"
             )
             self.status_label.setText(f" {state} | {user}@{host}:{port} ")
+            
+            self.monitor_widget.set_info(widget.info)
+            enabled = SettingsManager.get("enable_monitor", False)
+            self.monitor_widget.set_enabled(enabled)
 
     def _open_port_forward(self):
         current = self.tab_widget.currentWidget()
@@ -107,7 +118,11 @@ class MainWindow(QMainWindow):
                 pty = tab.terminal_panel.ssh_pty_widget
                 pty.terminal_font.setFamily(font_family)
                 pty.set_font_size(font_size)
-                tab.terminal_panel._apply_settings()
+                
+        # Update monitor visibility
+        if self.tab_widget.count() > 0:
+            enabled = SettingsManager.get("enable_monitor", False)
+            self.monitor_widget.set_enabled(enabled)
 
     def _toggle_dark_mode(self, checked: bool):
         self._dark_mode = checked
@@ -354,6 +369,12 @@ def setup_logging():
 
 
 def main():
+    try:
+        import winuvloop
+        winuvloop.install()
+    except ImportError:
+        pass
+
     setup_logging()
 
     app = QApplication(sys.argv)

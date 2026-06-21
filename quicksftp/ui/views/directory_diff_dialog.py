@@ -55,12 +55,13 @@ class DirectoryDiffDialog(QDialog):
         all_names = sorted(set(list(self._local.keys()) + list(self._remote.keys())))
 
         for name in all_names:
-            l = self._local.get(name, {})
-            r = self._remote.get(name, {})
-            l_size = l.get("size", "")
-            r_size = r.get("size", "")
-            r_time = r.get("time", "")
+            local_info = self._local.get(name, {})
+            remote_info = self._remote.get(name, {})
+            l_size = local_info.get("size", "")
+            r_size = remote_info.get("size", "")
+            r_time = remote_info.get("time", "")
 
+            # 如果只有一侧有该项
             if name in self._local and name in self._remote:
                 if l_size == r_size:
                     status = ("🟢 一致", QColor("#2e7d32"), QColor("#e8f5e9"))

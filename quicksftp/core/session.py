@@ -211,6 +211,19 @@ class SSHSFTPInfo(QThread):
             except Exception as e:
                 logger.warning(f"Startup command failed: {cmd} — {e}")
 
+    def reconnect(self, password=None):
+        if password is not None:
+            self.password = password
+        self._run_sync(self._reconnect_coro())
+
+    async def _reconnect_coro(self):
+        try:
+            if getattr(self, "connection", None):
+                self.connection.close()
+        except Exception:
+            pass
+        await self.get_session()
+
     def _run_sync(self, coro):
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return self._wait_future(future)

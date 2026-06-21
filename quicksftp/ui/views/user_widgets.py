@@ -348,17 +348,6 @@ class TerminalPanel(QWidget):
         # 1. 实例化原有终端组件
         self.ssh_pty_widget = SSHPtyWidget(self.info)
 
-        # Monitor widget
-        from quicksftp.ui.views.monitor_widget import SystemMonitorWidget
-        self.monitor_widget = SystemMonitorWidget(self.info)
-
-        # Left Vertical Splitter
-        self.left_v_splitter = QSplitter(Qt.Orientation.Vertical)
-        self.left_v_splitter.addWidget(self.ssh_pty_widget)
-        self.left_v_splitter.addWidget(self.monitor_widget)
-        self.left_v_splitter.setStretchFactor(0, 10)
-        self.left_v_splitter.setStretchFactor(1, 1)
-
         # 2. 生成站点的唯一标识 (例如 root@192.168.1.10:22)
         site_id = f"{self.info.username}@{self.info.host}:{self.info.port}"
 
@@ -371,7 +360,7 @@ class TerminalPanel(QWidget):
         )
 
         self.splitter.addWidget(self.snippets_widget)
-        self.splitter.addWidget(self.left_v_splitter)
+        self.splitter.addWidget(self.ssh_pty_widget)
 
         self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
@@ -387,6 +376,4 @@ class TerminalPanel(QWidget):
             self.splitter.setSizes([snippet_w, total - snippet_w])
 
     def _apply_settings(self):
-        from quicksftp.core.settings import SettingsManager
-        enabled = SettingsManager.get("enable_monitor", False)
-        self.monitor_widget.set_enabled(enabled)
+        pass

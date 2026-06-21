@@ -15,7 +15,7 @@ class MonitorSignals(QObject):
 
 class SystemMonitorWidget(QFrame):
     """服务器实时资源监控面板 (类似 FinalShell)"""
-    def __init__(self, info):
+    def __init__(self, info=None):
         super().__init__()
         self.info = info
         self.signals = MonitorSignals()
@@ -80,8 +80,16 @@ class SystemMonitorWidget(QFrame):
             self._is_running = False
             self._timer.stop()
 
+    def set_info(self, info):
+        self.info = info
+        if info is None:
+            self.cpu_bar.setValue(0)
+            self.mem_bar.setValue(0)
+            self.disk_bar.setValue(0)
+            self.net_label.setText("⬆️ 0 B/s  ⬇️ 0 B/s")
+
     def _poll_data(self):
-        if not self.info.connect_is_ready or not hasattr(self.info, 'loop'):
+        if self.info is None or not self.info.connect_is_ready or not hasattr(self.info, 'loop'):
             return
         
         # 使用 linux 命令快速抓取信息
