@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "quicksftp"
-version = "1.3.2"
+version = "1.3.3"
 description = "跨平台 SFTP/SSH 客户端工具，支持多标签页终端、并发文件传输与站点管理"
 readme = "README.md"
 license = { text = "MIT" }

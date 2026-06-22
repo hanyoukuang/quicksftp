@@ -286,7 +286,7 @@ wheels = [
 [[package]]
 name = "pyqterminal"
 version = "0.1.0"
-source = { git = "https://github.com/hanyoukuang/pyqterminal.git#894a7bfe926f154ccab1f8af61d0c496d61d9cfb" }
+source = { git = "https://github.com/hanyoukuang/pyqterminal.git#d13151c5c2fe67e37b23771d5fe70254d8a8d88b" }
 dependencies = [
     { name = "cython" },
     { name = "pyside6" },
