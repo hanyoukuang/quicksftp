@@ -174,9 +174,11 @@ class SiteManagerWidget(QWidget):
         widget = QWidget()
         layout = QFormLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.proxy_type_combo = QComboBox()
-        self.proxy_type_combo.addItems(["无 (直接连接)", "SSH 跳板机 (ProxyJump)", "SOCKS5 代理", "HTTP 代理"])
+        self.proxy_type_combo.addItems(
+            ["无 (直接连接)", "SSH 跳板机 (ProxyJump)", "SOCKS5 代理", "HTTP 代理"]
+        )
         self.proxy_type_combo.currentIndexChanged.connect(self.on_proxy_type_changed)
 
         self.proxy_host_edit = QLineEdit()
@@ -446,14 +448,18 @@ class SiteManagerWidget(QWidget):
         idx = self.proxy_type_combo.currentIndex()
         if idx > 0:
             ptype = "ssh" if idx == 1 else ("socks5" if idx == 2 else "http")
-            port = self._parse_port(self.proxy_port_edit.text()) or (22 if idx == 1 else (1080 if idx == 2 else 8080))
-            return json.dumps({
-                "type": ptype,
-                "host": self.proxy_host_edit.text().strip(),
-                "port": port,
-                "username": self.proxy_user_edit.text().strip(),
-                "password": self.proxy_pass_edit.text()
-            })
+            port = self._parse_port(self.proxy_port_edit.text()) or (
+                22 if idx == 1 else (1080 if idx == 2 else 8080)
+            )
+            return json.dumps(
+                {
+                    "type": ptype,
+                    "host": self.proxy_host_edit.text().strip(),
+                    "port": port,
+                    "username": self.proxy_user_edit.text().strip(),
+                    "password": self.proxy_pass_edit.text(),
+                }
+            )
         return None
 
     def save_site(self):
@@ -487,7 +493,12 @@ class SiteManagerWidget(QWidget):
                 # 正常更新
                 if auth_type == "password":
                     self.userinfo_db.update_password(
-                        idx, host, port, username, self.password_edit.text(), proxy_config
+                        idx,
+                        host,
+                        port,
+                        username,
+                        self.password_edit.text(),
+                        proxy_config,
                     )
                 else:
                     self.userinfo_db.update_key(
@@ -497,7 +508,7 @@ class SiteManagerWidget(QWidget):
                         username,
                         self.key_path_edit.text(),
                         self.passphrase_edit.text(),
-                        proxy_config
+                        proxy_config,
                     )
         else:
             # 全新插入
@@ -507,7 +518,12 @@ class SiteManagerWidget(QWidget):
         QMessageBox.information(self, "成功", "站点已保存。")
 
     def insert_new_record(
-        self, host: str, port: int, username: str, auth_type: str, proxy_config: Optional[str] = None
+        self,
+        host: str,
+        port: int,
+        username: str,
+        auth_type: str,
+        proxy_config: Optional[str] = None,
     ) -> None:
         if auth_type == "password":
             self.userinfo_db.insert_password(
@@ -520,7 +536,7 @@ class SiteManagerWidget(QWidget):
                 username,
                 self.key_path_edit.text(),
                 self.passphrase_edit.text(),
-                proxy_config
+                proxy_config,
             )
 
     def delete_site(self):

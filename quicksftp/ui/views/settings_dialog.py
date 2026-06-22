@@ -60,7 +60,9 @@ class SettingsDialog(QDialog):
         form_layout.addRow("终端文字大小:", self.size_spin)
 
         # Monitor setting
-        self.monitor_checkbox = QCheckBox("在终端下方显示服务器实时资源状态 (类似 FinalShell)")
+        self.monitor_checkbox = QCheckBox(
+            "在终端下方显示服务器实时资源状态 (类似 FinalShell)"
+        )
         form_layout.addRow("监控面板:", self.monitor_checkbox)
 
         layout.addLayout(form_layout)

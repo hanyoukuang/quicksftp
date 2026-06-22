@@ -4,6 +4,7 @@ from typing import Tuple
 
 import mimetypes
 
+
 def is_binary(filename: str) -> bool:
     """
     使用 Python 内置的 mimetypes 库进行准确的二进制文件判断。
@@ -15,23 +16,40 @@ def is_binary(filename: str) -> bool:
     """
     if not mimetypes.inited:
         mimetypes.init()
-        
+
     mime_type, _ = mimetypes.guess_type(filename)
-    
+
     if mime_type is None:
         # 如果 mimetypes 无法识别（例如无后缀的文件），使用黑名单过滤绝对的二进制类型
         _, ext = os.path.splitext(filename.lower())
         fallback_binaries = {
-            ".bin", ".dat", ".pyc", ".pyo", ".class", ".exe", ".dll", 
-            ".so", ".o", ".a", ".lib", ".db", ".sqlite", ".iso", ".img", 
-            ".dmg", ".apk", ".ipa", ".elf", ".rom"
+            ".bin",
+            ".dat",
+            ".pyc",
+            ".pyo",
+            ".class",
+            ".exe",
+            ".dll",
+            ".so",
+            ".o",
+            ".a",
+            ".lib",
+            ".db",
+            ".sqlite",
+            ".iso",
+            ".img",
+            ".dmg",
+            ".apk",
+            ".ipa",
+            ".elf",
+            ".rom",
         }
         return ext in fallback_binaries
 
     # 明确是 text/* 类型的肯定是文本
     if mime_type.startswith("text/"):
         return False
-        
+
     # 一些 application/* 类型其实是纯文本格式
     text_application_types = {
         "application/json",
@@ -47,7 +65,7 @@ def is_binary(filename: str) -> bool:
     }
     if mime_type in text_application_types:
         return False
-        
+
     # 其余 (image/*, video/*, audio/*, 大部分 application/*) 都认为是二进制
     return True
 

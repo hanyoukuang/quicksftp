@@ -108,7 +108,7 @@ class SFTPTabWidget(QWidget):
 
     def _check_health(self):
         try:
-            self.info.realpath('.')
+            self.info.realpath(".")
             self._reconnect_attempts = 0
             if not self._health_status:
                 self.window().tab_widget.setTabText(
@@ -135,16 +135,16 @@ class SFTPTabWidget(QWidget):
                     )
 
             # 2. 尝试重连 3 次
-            if not hasattr(self, '_reconnect_attempts'):
+            if not hasattr(self, "_reconnect_attempts"):
                 self._reconnect_attempts = 0
-                
+
             if self._reconnect_attempts < 3:
                 self._reconnect_attempts += 1
                 try:
                     self.info.reconnect(self._password)
                     pty = self.terminal_panel.ssh_pty_widget
                     pty.bridge.start(pty.cols, pty.rows)
-                    
+
                     # 抢救成功，立即变回绿灯并重置计数
                     self._reconnect_attempts = 0
                     idx = self.window().tab_widget.indexOf(self)

@@ -127,6 +127,7 @@ class SSHSFTPInfo(QThread):
     async def get_session(self) -> None:
         """异步建立 SSH 连接、初始化 SFTP 客户端及终端进程"""
         import json
+
         sock = None
 
         try:
@@ -139,20 +140,22 @@ class SSHSFTPInfo(QThread):
                         port=pconf.get("port", 22),
                         username=pconf.get("username"),
                         password=pconf.get("password"),
-                        known_hosts=asyncssh.SSHKnownHosts() if self.verify_host_key else None,
+                        known_hosts=asyncssh.SSHKnownHosts()
+                        if self.verify_host_key
+                        else None,
                         connect_timeout=10,
                     )
                 elif ptype in ("socks5", "http"):
                     from python_socks.async_.asyncio import Proxy
                     import urllib.parse
-                    
+
                     url = f"{ptype}://"
                     user = pconf.get("username", "")
                     pwd = pconf.get("password", "")
                     if user or pwd:
                         url += f"{urllib.parse.quote(user)}:{urllib.parse.quote(pwd)}@"
                     url += f"{pconf.get('host')}:{pconf.get('port')}"
-                    
+
                     proxy = Proxy.from_url(url)
                     # Create socket connected to the target server through proxy
                     sock = await proxy.connect(dest_host=self.host, dest_port=self.port)

@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QDialog,
     QDialogButtonBox,
-    QComboBox
+    QComboBox,
 )
 
 from quicksftp.core.config import get_data_path
@@ -31,7 +31,15 @@ logger = logging.getLogger(__name__)
 class SnippetDialog(QDialog):
     """用于添加/编辑快捷命令的弹窗，支持作用域和分组选择"""
 
-    def __init__(self, parent=None, name="", cmd="", scope="global", group="", existing_groups=None):
+    def __init__(
+        self,
+        parent=None,
+        name="",
+        cmd="",
+        scope="global",
+        group="",
+        existing_groups=None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("快捷命令")
         self.resize(380, 180)
@@ -74,7 +82,7 @@ class SnippetDialog(QDialog):
             self.name_edit.text().strip(),
             self.cmd_edit.text().strip(),
             self.scope_combo.currentData(),
-            self.group_combo.currentText().strip()
+            self.group_combo.currentText().strip(),
         )
 
 
@@ -94,8 +102,11 @@ class QuickSnippetsWidget(QWidget):
         self.init_ui()
         self.load_snippets()
 
-    def _substitute_template(self, cmd: str, remote_path: str = "", session_url: str = "") -> str:
+    def _substitute_template(
+        self, cmd: str, remote_path: str = "", session_url: str = ""
+    ) -> str:
         result = cmd
+
         def _prompt_replacer(match):
             prompt_text = match.group(1)
             text, ok = QInputDialog.getText(self, "命令参数", prompt_text)
@@ -132,7 +143,7 @@ class QuickSnippetsWidget(QWidget):
         self.title_label.setStyleSheet("font-weight: bold; color: #777;")
         title_layout.addWidget(self.title_label)
         title_layout.addStretch()
-        
+
         layout.addLayout(title_layout)
 
         # 卡片式样式的 Tree
@@ -157,7 +168,6 @@ class QuickSnippetsWidget(QWidget):
         self.edit_btn.clicked.connect(self.edit_snippet)
         self.del_btn.clicked.connect(self.del_snippet)
         layout.addLayout(btn_layout)
-
 
     def _get_all_groups(self):
         groups = set()
@@ -192,7 +202,9 @@ class QuickSnippetsWidget(QWidget):
                         default_scope = "site"
 
         add_action = menu.addAction("➕ 添加命令")
-        add_action.triggered.connect(lambda _, s=default_scope, g=default_group: self.add_snippet(s, g))
+        add_action.triggered.connect(
+            lambda _, s=default_scope, g=default_group: self.add_snippet(s, g)
+        )
 
         if item and item.data(0, Qt.ItemDataRole.UserRole):
             menu.addSeparator()
@@ -214,7 +226,12 @@ class QuickSnippetsWidget(QWidget):
         if isinstance(default_group, bool):
             default_group = ""
 
-        dialog = SnippetDialog(self, scope=default_scope, group=default_group, existing_groups=self._get_all_groups())
+        dialog = SnippetDialog(
+            self,
+            scope=default_scope,
+            group=default_group,
+            existing_groups=self._get_all_groups(),
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             name, cmd, scope, group = dialog.get_data()
             if name and cmd:
@@ -252,20 +269,24 @@ class QuickSnippetsWidget(QWidget):
             g = snip.get("group", "").strip()
             item = QTreeWidgetItem([f"{snip['name']}\n> {snip['cmd']}"])
             item.setToolTip(0, snip["cmd"])
-            item.setData(0, Qt.ItemDataRole.UserRole, {"type": scope_str, "index": idx, "data": snip, "group": g})
+            item.setData(
+                0,
+                Qt.ItemDataRole.UserRole,
+                {"type": scope_str, "index": idx, "data": snip, "group": g},
+            )
             if g:
                 if g not in groups:
                     groups[g] = []
                 groups[g].append(item)
             else:
                 root_items.append(item)
-        
+
         # 添加文件夹节点
         for g, items in groups.items():
             g_node = QTreeWidgetItem(parent_item, [f"📁 {g}"])
             g_node.setFlags(Qt.ItemFlag.ItemIsEnabled)
             g_node.addChildren(items)
-        
+
         # 添加无分组节点
         parent_item.addChildren(root_items)
 
@@ -297,7 +318,14 @@ class QuickSnippetsWidget(QWidget):
         old_scope = meta["type"]
         snip = meta["data"]
 
-        dialog = SnippetDialog(self, snip["name"], snip["cmd"], old_scope, snip.get("group", ""), self._get_all_groups())
+        dialog = SnippetDialog(
+            self,
+            snip["name"],
+            snip["cmd"],
+            old_scope,
+            snip.get("group", ""),
+            self._get_all_groups(),
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             name, cmd, new_scope, new_group = dialog.get_data()
             if not (name and cmd):
@@ -305,10 +333,16 @@ class QuickSnippetsWidget(QWidget):
 
             if old_scope != new_scope:
                 self._get_target_list(old_scope).pop(meta["index"])
-                self._get_target_list(new_scope).append({"name": name, "cmd": cmd, "group": new_group})
+                self._get_target_list(new_scope).append(
+                    {"name": name, "cmd": cmd, "group": new_group}
+                )
             else:
                 target_list = self._get_target_list(old_scope)
-                target_list[meta["index"]] = {"name": name, "cmd": cmd, "group": new_group}
+                target_list[meta["index"]] = {
+                    "name": name,
+                    "cmd": cmd,
+                    "group": new_group,
+                }
 
             self.save_snippets()
             self.refresh_tree()

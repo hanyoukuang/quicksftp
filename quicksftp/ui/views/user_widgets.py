@@ -28,7 +28,6 @@ from quicksftp.ui.views.directory_diff_dialog import DirectoryDiffDialog
 logger = logging.getLogger(__name__)
 
 
-
 class ControlWidget(QWidget):
     """
     左侧导航栏
@@ -48,9 +47,7 @@ class ControlWidget(QWidget):
         self.btn_group.setExclusive(True)
         self.btn_group.idClicked.connect(self.currentRowChanged.emit)
 
-        os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         self._items = [
             ("terminal", "SSH 终端"),
@@ -112,7 +109,7 @@ class ControlWidget(QWidget):
                     background: {"#2b2d2e" if is_dark else "#ebebeb"};
                 }}
             """)
-        
+
         self.snippets_toggle_btn.setStyleSheet(f"""
             QPushButton {{
                 border: none;
@@ -175,24 +172,26 @@ class UserSFTPWidget(QWidget):
         self.remote_file_widget.set_menu()
         self.remote_file_widget.path_change_msg.connect(self.display_path)
 
-        self.path_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.path_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.search_edit.setFixedWidth(140)
 
         # 组装右侧（远端）的顶栏
         remote_hbox = QHBoxLayout()
         remote_hbox.setContentsMargins(0, 0, 0, 5)
         remote_hbox.setSpacing(6)
-        
+
         # Navigation
         remote_hbox.addWidget(self.back_button)
         remote_hbox.addWidget(self.path_combo)
-        
+
         # Actions
         remote_hbox.addWidget(self.put_button)
         remote_hbox.addWidget(self.get_button)
         remote_hbox.addWidget(self.diff_btn)
         remote_hbox.addWidget(self.show_hidden_btn)
-        
+
         # Search
         remote_hbox.addSpacing(10)
         remote_hbox.addWidget(self.search_edit)
@@ -265,6 +264,7 @@ class UserSFTPWidget(QWidget):
             self.display_path(new_path)
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox
+
             QMessageBox.warning(self, "错误", f"无法切换到路径 {path}:\n{e}")
             # 失败后，恢复输入框为当前的实际合法路径
             self.display_path(self.info.getcwd())
@@ -290,7 +290,6 @@ class UserSFTPWidget(QWidget):
 
         self.transfer_dialog = TransferSetupWidget(self.sftp_tab_widget, mode="PUT")
         self.transfer_dialog.show()
-
 
     @Slot(str)
     def display_path(self, path: str):
@@ -321,8 +320,14 @@ class UserSFTPWidget(QWidget):
                 is_dir = entry.attrs.type == 2
                 size_val = -1 if is_dir else getattr(entry.attrs, "size", 0)
                 mtime_val = getattr(entry.attrs, "mtime", 0)
-                mtime_str = datetime.datetime.fromtimestamp(mtime_val).strftime("%Y-%m-%d %H:%M:%S") if mtime_val else ""
-                
+                mtime_str = (
+                    datetime.datetime.fromtimestamp(mtime_val).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    if mtime_val
+                    else ""
+                )
+
                 remote_files[entry.filename] = {
                     "size": size_val,
                     "time": mtime_str,

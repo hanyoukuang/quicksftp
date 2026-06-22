@@ -30,7 +30,7 @@ class DirectoryDiffDialog(QDialog):
         self._lbl_local = QLabel("🔵 仅本地: 0")
         self._lbl_remote = QLabel("🟠 仅远端: 0")
         self._lbl_diff = QLabel("🔴 差异: 0")
-        
+
         header.addWidget(self._lbl_same)
         header.addWidget(self._lbl_local)
         header.addWidget(self._lbl_remote)
@@ -68,7 +68,10 @@ class DirectoryDiffDialog(QDialog):
                 else:
                     status = ("🔴 差异", QColor("#c62828"), QColor("#fce4ec"))
                     import logging
-                    logging.getLogger("quicksftp").warning(f"DIFF DETECTED for {name}: local={repr(l_size)} ({type(l_size)}), remote={repr(r_size)} ({type(r_size)})")
+
+                    logging.getLogger("quicksftp").warning(
+                        f"DIFF DETECTED for {name}: local={repr(l_size)} ({type(l_size)}), remote={repr(r_size)} ({type(r_size)})"
+                    )
                 self._local[name]["status"] = "same" if l_size == r_size else "diff"
             elif name in self._local:
                 status = ("🔵 仅本地", QColor("#1565c0"), QColor("#e3f2fd"))
@@ -81,7 +84,7 @@ class DirectoryDiffDialog(QDialog):
                 l_size_str = "文件夹"
             else:
                 l_size_str = str(l_size) if l_size != "" else ""
-                
+
             if r_size == -1:
                 r_size_str = "文件夹"
             else:
@@ -95,7 +98,9 @@ class DirectoryDiffDialog(QDialog):
 
         self._lbl_same.setText(f"🟢 一致: {self._count_status('same')}")
         self._lbl_local.setText(f"🔵 仅本地: {self._count_status('local_only')}")
-        self._lbl_remote.setText(f"🟠 仅远端: {self._count_status('remote_only') + self._count_remote_only()}")
+        self._lbl_remote.setText(
+            f"🟠 仅远端: {self._count_status('remote_only') + self._count_remote_only()}"
+        )
         self._lbl_diff.setText(f"🔴 差异: {self._count_status('diff')}")
 
     def _count_remote_only(self) -> int:

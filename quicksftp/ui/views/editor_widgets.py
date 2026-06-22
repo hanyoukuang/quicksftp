@@ -169,7 +169,9 @@ class LocalEdit(QTextEdit):
         self.highlighter = SimpleHighlighter(self.document())
 
     def keyPressEvent(self, event):
-        if (event.modifiers() & Qt.KeyboardModifier.ControlModifier) and event.key() == Qt.Key.Key_S:
+        if (
+            event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ) and event.key() == Qt.Key.Key_S:
             self.save_file_action()
         else:
             super().keyPressEvent(event)
@@ -191,7 +193,9 @@ class LocalEdit(QTextEdit):
         if now_text == self.original_text:
             return
         reply = QMessageBox.question(
-            self, "文件", "文件有改动，是否保存",
+            self,
+            "文件",
+            "文件有改动，是否保存",
             QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
         )
         if reply == QMessageBox.StandardButton.Ok:

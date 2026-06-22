@@ -172,13 +172,25 @@ class UserInfoDB:
         self.cursor.execute(sql, (host, port, username))
         rows = self.cursor.fetchall()
         return [
-            (r[0], r[1], r[2], r[3], self.crypto.decrypt(r[4]), self.crypto.decrypt(r[5]) if len(r)>5 and r[5] else None)
+            (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                self.crypto.decrypt(r[4]),
+                self.crypto.decrypt(r[5]) if len(r) > 5 and r[5] else None,
+            )
             for r in rows
             if self.crypto.decrypt(r[4]) == password
         ]
 
     def insert_password(
-        self, host: str, port: int, username: str, password: str, proxy_config: Optional[str] = None
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        proxy_config: Optional[str] = None,
     ) -> None:
         """
         新增一条密码登录记录，在写入数据库前将 password 加密
@@ -192,7 +204,9 @@ class UserInfoDB:
         encrypted_proxy = self.crypto.encrypt(proxy_config) if proxy_config else None
 
         sql = "INSERT INTO Password(host, port, username, password, proxy_config) VALUES (?, ?, ?, ?, ?)"
-        self.cursor.execute(sql, (host, port, username, encrypted_password, encrypted_proxy))
+        self.cursor.execute(
+            sql, (host, port, username, encrypted_password, encrypted_proxy)
+        )
         self.conn.commit()
 
     def query_all_password(self) -> List[Tuple]:
@@ -202,7 +216,17 @@ class UserInfoDB:
         rows = self.cursor.fetchall()
 
         # 将密文解密后重新组装为 Tuple 返回给前端
-        return [(r[0], r[1], r[2], r[3], self.crypto.decrypt(r[4]), self.crypto.decrypt(r[5]) if len(r)>5 and r[5] else None) for r in rows]
+        return [
+            (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                self.crypto.decrypt(r[4]),
+                self.crypto.decrypt(r[5]) if len(r) > 5 and r[5] else None,
+            )
+            for r in rows
+        ]
 
     def query_idx_password(self, idx: int) -> Optional[Tuple]:
         """根据 ID 获取单条记录并解密"""
@@ -210,7 +234,14 @@ class UserInfoDB:
         self.cursor.execute(sql, (idx,))
         r = self.cursor.fetchone()
         if r:
-            return (r[0], r[1], r[2], r[3], self.crypto.decrypt(r[4]), self.crypto.decrypt(r[5]) if len(r)>5 and r[5] else None)
+            return (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                self.crypto.decrypt(r[4]),
+                self.crypto.decrypt(r[5]) if len(r) > 5 and r[5] else None,
+            )
         return None
 
     def del_idx_password(self, idx: int) -> None:
@@ -236,7 +267,15 @@ class UserInfoDB:
         self.cursor.execute(sql, (host, port, username, key_path))
         rows = self.cursor.fetchall()
         return [
-            (r[0], r[1], r[2], r[3], r[4], self.crypto.decrypt(r[5]), self.crypto.decrypt(r[6]) if len(r)>6 and r[6] else None)
+            (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                r[4],
+                self.crypto.decrypt(r[5]),
+                self.crypto.decrypt(r[6]) if len(r) > 6 and r[6] else None,
+            )
             for r in rows
             if self.crypto.decrypt(r[5]) == passphrase
         ]
@@ -261,7 +300,9 @@ class UserInfoDB:
         encrypted_proxy = self.crypto.encrypt(proxy_config) if proxy_config else None
 
         sql = "INSERT INTO Key(host, port, username, key_path, passphrase, proxy_config) VALUES (?, ?, ?, ?, ?, ?)"
-        self.cursor.execute(sql, (host, port, username, key_path, encrypted_passphrase, encrypted_proxy))
+        self.cursor.execute(
+            sql, (host, port, username, key_path, encrypted_passphrase, encrypted_proxy)
+        )
         self.conn.commit()
 
     def query_all_key(self) -> List[Tuple]:
@@ -270,7 +311,18 @@ class UserInfoDB:
         self.cursor.execute(sql)
         rows = self.cursor.fetchall()
 
-        return [(r[0], r[1], r[2], r[3], r[4], self.crypto.decrypt(r[5]), self.crypto.decrypt(r[6]) if len(r)>6 and r[6] else None) for r in rows]
+        return [
+            (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                r[4],
+                self.crypto.decrypt(r[5]),
+                self.crypto.decrypt(r[6]) if len(r) > 6 and r[6] else None,
+            )
+            for r in rows
+        ]
 
     def query_idx_key(self, idx: int) -> Optional[Tuple]:
         """根据 ID 获取单条记录并解密"""
@@ -278,7 +330,15 @@ class UserInfoDB:
         self.cursor.execute(sql, (idx,))
         r = self.cursor.fetchone()
         if r:
-            return (r[0], r[1], r[2], r[3], r[4], self.crypto.decrypt(r[5]), self.crypto.decrypt(r[6]) if len(r)>6 and r[6] else None)
+            return (
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                r[4],
+                self.crypto.decrypt(r[5]),
+                self.crypto.decrypt(r[6]) if len(r) > 6 and r[6] else None,
+            )
         return None
 
     def del_idx_key(self, idx: int) -> None:
@@ -301,13 +361,21 @@ class UserInfoDB:
         return False
 
     def update_password(
-        self, idx: int, host: str, port: int, username: str, password: str, proxy_config: Optional[str] = None
+        self,
+        idx: int,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        proxy_config: Optional[str] = None,
     ) -> None:
         """更新密码登录记录"""
         encrypted_password = self.crypto.encrypt(password)
         encrypted_proxy = self.crypto.encrypt(proxy_config) if proxy_config else None
         sql = "UPDATE Password SET host=?, port=?, username=?, password=?, proxy_config=? WHERE id=?"
-        self.cursor.execute(sql, (host, port, username, encrypted_password, encrypted_proxy, idx))
+        self.cursor.execute(
+            sql, (host, port, username, encrypted_password, encrypted_proxy, idx)
+        )
         self.conn.commit()
 
     def update_key(
@@ -325,6 +393,15 @@ class UserInfoDB:
         encrypted_proxy = self.crypto.encrypt(proxy_config) if proxy_config else None
         sql = "UPDATE Key SET host=?, port=?, username=?, key_path=?, passphrase=?, proxy_config=? WHERE id=?"
         self.cursor.execute(
-            sql, (host, port, username, key_path, encrypted_passphrase, encrypted_proxy, idx)
+            sql,
+            (
+                host,
+                port,
+                username,
+                key_path,
+                encrypted_passphrase,
+                encrypted_proxy,
+                idx,
+            ),
         )
         self.conn.commit()

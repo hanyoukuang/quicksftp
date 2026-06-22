@@ -37,8 +37,9 @@ class MainWindow(QMainWindow):
         self.status_bar = self.statusBar()
         self.status_label = QLabel(" ⚡ 准备就绪 ")
         self.status_bar.addWidget(self.status_label)
-        
+
         from quicksftp.ui.views.monitor_widget import SystemMonitorWidget
+
         self.monitor_widget = SystemMonitorWidget(None)
         self.status_bar.addWidget(self.monitor_widget, 1)
         self.monitor_widget.setVisible(False)
@@ -86,7 +87,7 @@ class MainWindow(QMainWindow):
                 else "🔴 连接断开"
             )
             self.status_label.setText(f" {state} | {user}@{host}:{port} ")
-            
+
             self.monitor_widget.set_info(widget.info)
             enabled = SettingsManager.get("enable_monitor", False)
             self.monitor_widget.set_enabled(enabled)
@@ -118,7 +119,7 @@ class MainWindow(QMainWindow):
                 pty = tab.terminal_panel.ssh_pty_widget
                 pty.terminal_font.setFamily(font_family)
                 pty.set_font_size(font_size)
-                
+
         # Update monitor visibility
         if self.tab_widget.count() > 0:
             enabled = SettingsManager.get("enable_monitor", False)
@@ -287,7 +288,7 @@ class MainWindow(QMainWindow):
             # 将其添加为一个新的 Tab
             index = self.tab_widget.addTab(new_sftp_tab, tab_name)
             self.tab_widget.setCurrentIndex(index)  # 自动跳转到新开的标签页
-            
+
             # 同步当前的主题状态到新标签页
             new_sftp_tab.control_widget.update_theme(self._dark_mode)
 
@@ -297,15 +298,22 @@ class MainWindow(QMainWindow):
         except Exception as e:
             err_type = type(e).__name__
             error_msg = str(e)
-            
+
             if err_type == "PermissionDenied":
                 error_msg = "认证失败：请检查用户名、密码或私钥是否正确。\n(服务器拒绝了连接请求)"
-            elif err_type in ("TimeoutError", "ConnectionError") or "timeout" in error_msg.lower():
-                error_msg = f"网络超时：{error_msg}\n(请检查服务器 IP、端口以及防火墙设置)"
+            elif (
+                err_type in ("TimeoutError", "ConnectionError")
+                or "timeout" in error_msg.lower()
+            ):
+                error_msg = (
+                    f"网络超时：{error_msg}\n(请检查服务器 IP、端口以及防火墙设置)"
+                )
             elif "Connection refused" in error_msg:
                 error_msg = "连接被拒绝：目标服务器不存在或未开放对应端口。"
-                
-            QMessageBox.critical(self, "连接失败", f"无法连接到 {tab_name}:\n\n{error_msg}")
+
+            QMessageBox.critical(
+                self, "连接失败", f"无法连接到 {tab_name}:\n\n{error_msg}"
+            )
 
     def closeEvent(self, event):
         """
@@ -351,8 +359,7 @@ def setup_logging():
     root_logger.setLevel(logging.INFO)
 
     formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     # 文件日志：最多保留5个备份，每个5MB
@@ -371,6 +378,7 @@ def setup_logging():
 def main():
     try:
         import winuvloop
+
         winuvloop.install()
     except ImportError:
         pass

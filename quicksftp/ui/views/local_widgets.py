@@ -83,12 +83,17 @@ class QuickSFTPLocalModel(QFileSystemModel):
         return types
 
     def supportedDropActions(self):
-        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction | super().supportedDropActions()
+        return (
+            Qt.DropAction.CopyAction
+            | Qt.DropAction.MoveAction
+            | super().supportedDropActions()
+        )
 
     def dropMimeData(self, data, action, row, column, parent):
         if data.hasFormat("application/x-quicksftp-remote-paths"):
             return False
         return super().dropMimeData(data, action, row, column, parent)
+
 
 class LocalFileWidget(QWidget):
     """
@@ -128,13 +133,15 @@ class LocalFileWidget(QWidget):
 
         self.init_ui()
 
-        self.path_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.path_edit.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
 
     def init_ui(self):
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 5)
         hbox.setSpacing(6)
-        
+
         hbox.addWidget(self.up_button)
         hbox.addWidget(self.path_edit)
         hbox.addWidget(self.toggle_hidden_btn)
@@ -162,13 +169,16 @@ class LocalFileWidget(QWidget):
 
     def toggle_hidden(self):
         self.show_hidden = not self.show_hidden
-        self.toggle_hidden_btn.setText("👁️ 隐藏点文件" if self.show_hidden else "👁️ 显示隐藏文件")
+        self.toggle_hidden_btn.setText(
+            "👁️ 隐藏点文件" if self.show_hidden else "👁️ 显示隐藏文件"
+        )
         self._update_model_filter()
 
     def check_dir_permission(self, path: str) -> bool:
         import os
         import sys
         from PySide6.QtWidgets import QMessageBox
+
         try:
             os.scandir(path).close()
             return True
@@ -196,19 +206,24 @@ class LocalFileWidget(QWidget):
         import os
         from PySide6.QtWidgets import QMessageBox
         from quicksftp.utils.file_utils import is_binary
-        
+
         if is_binary(path):
-            QMessageBox.warning(self, "无法编辑", "这是一个二进制文件，不支持内置编辑器打开。")
+            QMessageBox.warning(
+                self, "无法编辑", "这是一个二进制文件，不支持内置编辑器打开。"
+            )
             return
-            
+
         try:
             if os.path.getsize(path) > 5 * 1024 * 1024:
-                QMessageBox.warning(self, "文件过大", "文件大于 5MB，请使用系统默认程序打开。")
+                QMessageBox.warning(
+                    self, "文件过大", "文件大于 5MB，请使用系统默认程序打开。"
+                )
                 return
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
-                
+
             from quicksftp.ui.views.editor_widgets import LocalEdit
+
             # Maintain a reference to prevent garbage collection
             if not hasattr(self, "_local_editors"):
                 self._local_editors = []
@@ -216,7 +231,9 @@ class LocalFileWidget(QWidget):
             self._local_editors.append(edit)
             edit.show()
         except UnicodeDecodeError:
-            QMessageBox.warning(self, "格式错误", "这不是一个有效的 UTF-8 文本文件，无法打开。")
+            QMessageBox.warning(
+                self, "格式错误", "这不是一个有效的 UTF-8 文本文件，无法打开。"
+            )
         except Exception as e:
             QMessageBox.warning(self, "错误", f"无法打开文件:\n{e}")
 
@@ -246,12 +263,17 @@ class LocalFileWidget(QWidget):
             if not self.model.isDir(index):
                 from PySide6.QtGui import QDesktopServices
                 from PySide6.QtCore import QUrl
+
                 menu.addSeparator()
                 edit_action = menu.addAction("📝 内置编辑器打开")
-                edit_action.triggered.connect(lambda *args: self.open_internal_editor(path))
-                
+                edit_action.triggered.connect(
+                    lambda *args: self.open_internal_editor(path)
+                )
+
                 ext_action = menu.addAction("🖊️ 系统默认程序打开")
-                ext_action.triggered.connect(lambda *args: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
+                ext_action.triggered.connect(
+                    lambda *args: QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+                )
 
             menu.addSeparator()
             rename_action = menu.addAction("✏️ 重命名")

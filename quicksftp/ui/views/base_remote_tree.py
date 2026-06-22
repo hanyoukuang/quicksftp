@@ -39,7 +39,11 @@ class QuickSFTPRemoteModel(QStandardItemModel):
         return types
 
     def supportedDropActions(self):
-        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction | super().supportedDropActions()
+        return (
+            Qt.DropAction.CopyAction
+            | Qt.DropAction.MoveAction
+            | super().supportedDropActions()
+        )
 
     def dropMimeData(self, data, action, row, column, parent):
         if data.hasFormat("application/x-quicksftp-remote-paths") or data.hasUrls():
@@ -142,12 +146,20 @@ class BaseRemoteTreeWidget(QTreeView):
         seq = self._refresh_seq
         self.model.removeRows(0, self.model.rowCount())
         self.all_files_dict.clear()
-        
+
         # 添加一个搜索中提示节点
         loading_item = QStandardItem(f"🔍 正在全局搜索 '{keyword}' ...")
         loading_item.setFlags(Qt.ItemFlag.NoItemFlags)
-        self.model.appendRow([loading_item, QStandardItem(""), QStandardItem(""), QStandardItem(""), QStandardItem("")])
-        
+        self.model.appendRow(
+            [
+                loading_item,
+                QStandardItem(""),
+                QStandardItem(""),
+                QStandardItem(""),
+                QStandardItem(""),
+            ]
+        )
+
         target_path = getattr(self, "abspath", self.info.getcwd())
         asyncio.run_coroutine_threadsafe(
             self.fetch_search_results(target_path, keyword, seq), self.info.loop
@@ -159,13 +171,13 @@ class BaseRemoteTreeWidget(QTreeView):
             # 既保证跨平台（Windows/Linux）100% 可用，又能做到无延迟瞬间响应。
             keyword_lower = keyword.lower()
             matched_entries = []
-            
+
             raw_entries = getattr(self, "last_raw_entries", [])
             for entry in raw_entries:
                 # 忽略隐藏文件的逻辑
                 if not self.show_hidden and entry.filename.startswith("."):
                     continue
-                    
+
                 if keyword_lower in entry.filename.lower():
                     matched_entries.append(entry)
 

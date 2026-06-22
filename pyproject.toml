@@ -14,8 +14,8 @@ dependencies = [
     "cryptography>=41.0.0",
     "keyring>=25.7.0",
     "nuitka>=4.1.2",
+    "pyqterminal",
     "pyside6>=6.11.1",
-    "pyte>=0.8.2",
     "python-socks[asyncio]>=2.4.4",
     "winuvloop>=0.2.4",
 ]
@@ -41,6 +41,9 @@ packages = ["quicksftp"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 qt_api = "pyside6"
+
+[tool.uv.sources]
+pyqterminal = { git = "https://github.com/hanyoukuang/pyqterminal.git" }
 
 [dependency-groups]
 dev = [
