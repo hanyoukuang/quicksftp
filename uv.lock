@@ -286,7 +286,7 @@ wheels = [
 [[package]]
 name = "pyqterminal"
 version = "0.1.0"
-source = { git = "https://github.com/hanyoukuang/pyqterminal.git#a3df88aa6e6479d646c2df5c8faf5622e7053bb6" }
+source = { git = "https://github.com/hanyoukuang/pyqterminal.git#4d75a015335a2e7cc0e85a81baf1eeb67cd09a82" }
 dependencies = [
     { name = "cython" },
     { name = "pyside6" },
@@ -415,7 +415,7 @@ wheels = [
 
 [[package]]
 name = "quicksftp"
-version = "1.3.0"
+version = "1.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "asyncssh" },
