@@ -167,13 +167,13 @@ class MainWindow(QMainWindow):
                 QDialog { background: #f5f5f5; }
                 
                 /* Light Mode Scrollbar */
-                QScrollBar:vertical { border: none; background: transparent; width: 10px; margin: 0px; }
+                QScrollBar:vertical { border: none; background: rgba(0,0,0,0.1); width: 10px; margin: 0px; }
                 QScrollBar::handle:vertical { background: rgba(0,0,0,0.2); min-height: 20px; border-radius: 5px; }
                 QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.4); }
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
                 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
                 
-                QScrollBar:horizontal { border: none; background: transparent; height: 10px; margin: 0px; }
+                QScrollBar:horizontal { border: none; background: rgba(0,0,0,0.1); height: 10px; margin: 0px; }
                 QScrollBar::handle:horizontal { background: rgba(0,0,0,0.2); min-width: 20px; border-radius: 5px; }
                 QScrollBar::handle:horizontal:hover { background: rgba(0,0,0,0.4); }
                 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0px; }
@@ -208,7 +208,7 @@ class MainWindow(QMainWindow):
             
             QScrollBar:vertical {
                 border: none;
-                background: transparent;
+                background: rgba(255,255,255,0.1);
                 width: 10px;
                 margin: 0px;
             }
@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
             }
             QScrollBar:horizontal {
                 border: none;
-                background: transparent;
+                background: rgba(255,255,255,0.1);
                 height: 10px;
                 margin: 0px;
             }
