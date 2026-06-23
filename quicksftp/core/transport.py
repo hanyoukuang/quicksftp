@@ -207,7 +207,7 @@ class Transport(QObject):
     transport_completed = Signal()  # 所有传输任务完成
 
     def __init__(
-        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo"
+        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo", search_coro_num: int = 16
     ) -> None:
         super().__init__()
         self.is_cancel = False
@@ -215,6 +215,7 @@ class Transport(QObject):
         self.loc = loc
         self.co_num = co_num
         self.speed_limit = speed_limit
+        self.search_coro_num = search_coro_num
         self.limiter = SpeedLimiter(speed_limit)
         self.sftp = info.sftp
         self.loop = info.loop
@@ -322,9 +323,9 @@ class GET(Transport):
     """下载任务核心类"""
 
     def __init__(
-        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo"
+        self, src: str, loc: str, co_num: int, speed_limit: int, info: "SSHSFTPInfo", search_coro_num: int = 16
     ) -> None:
-        super().__init__(src, loc, co_num, speed_limit, info)
+        super().__init__(src, loc, co_num, speed_limit, info, search_coro_num)
 
     async def _transport_file(self, src: str, loc: str) -> None:
         try:
@@ -339,20 +340,43 @@ class GET(Transport):
             tracker = ProgressTracker(self, initial_size=start_pos)
             chunk_size = self._calc_chunk_size()
 
-            async with self.sftp.open(src, "rb") as remote_file:
-                if start_pos > 0:
-                    await remote_file.seek(start_pos)
+            # 强制块大小为32KB以对齐OpenSSH等大多数SFTP服务端的最大发包限制
+            # 若使用 chunk_size=1MB，会导致服务端仅返回32KB时偏移量出现巨大的空洞，导致 buffer 堆积及假死
+            async with self.sftp.open(src, "rb", block_size=32768, max_requests=128) as remote_file:
                 with open(loc, mode) as local_file:
                     now_size = start_pos
-                    while True:
+                    next_offset = start_pos
+                    buffer = {}
+                    
+                    last_track_time = time.monotonic()
+                    iterator = await remote_file.read_parallel(size=-1, offset=start_pos)
+                    async for offset, chunk in iterator:
                         await self.pause_event.wait()
-                        await self.limiter.consume(chunk_size)
-                        chunk = await remote_file.read(chunk_size)
-                        if not chunk:
-                            break
-                        local_file.write(chunk)
-                        now_size += len(chunk)
-                        await tracker(b"", b"", now_size, remote_size)
+                        await self.limiter.consume(len(chunk))
+                        
+                        buffer[offset] = chunk
+                        
+                        # 批量写入磁盘，减少系统调用和磁盘缓冲区的无谓刷新
+                        write_batch = []
+                        write_len = 0
+                        while next_offset in buffer:
+                            data = buffer.pop(next_offset)
+                            write_batch.append(data)
+                            write_len += len(data)
+                            next_offset += len(data)
+                            
+                        if write_batch:
+                            # 剔除极其耗时的 seek 操作（因为写入顺序保证了连续性）
+                            local_file.write(b"".join(write_batch))
+                            now_size += write_len
+                            
+                        # 节流 GUI 更新 (每 0.05 秒更新一次)
+                        if time.monotonic() - last_track_time >= 0.05:
+                            await tracker(b"", b"", now_size, remote_size)
+                            last_track_time = time.monotonic()
+                            
+                    # 循环结束后确保进行最后一次进度更新
+                    await tracker(b"", b"", now_size, remote_size)
 
         except asyncio.CancelledError:
             # 捕获用户主动取消的信号，直接退出，绝不能调用 handle_fail 抛出任何进度条信号
@@ -368,9 +392,22 @@ class GET(Transport):
             os.mkdir(loc)
         task_list = []
         total = 0
-        async for entry in self.sftp.scandir(src):
-            if entry.filename in (".", ".."):
-                continue
+        
+        # 使用全局 Semaphore 限制并发扫描数量，防止耗尽 SFTP 句柄 (OpenSSH 默认为 ~100)
+        if not hasattr(self, '_scandir_sem'):
+            self._scandir_sem = asyncio.Semaphore(self.search_coro_num)
+            
+        entries = []
+        try:
+            async with self._scandir_sem:
+                async for entry in self.sftp.scandir(src):
+                    if entry.filename not in (".", ".."):
+                        entries.append(entry)
+        except asyncssh.SFTPError:
+            # 忽略没有权限读取或抛出 SFTPFailure 的目录
+            return 0
+            
+        for entry in entries:
             next_src = "/".join((src, entry.filename))
             next_loc = "/".join((loc, entry.filename))
             if entry.attrs.type == 2:  # Directory
@@ -393,6 +430,7 @@ class GET(Transport):
         self.pool = ImmediateSchedulerPool(self.co_num)
         src, loc = path_stand(self.src, self.loc)
         if await self.sftp.isdir(src):
+            self.speed_updated.emit("正在遍历文件夹...")
             all_size = await self.search_transport_file(src, loc)
             self.range_initialized.emit(all_size)
             await self.pool.submit(self.transport_coro_list)
@@ -407,9 +445,9 @@ class PUT(Transport):
     """上传任务核心类"""
 
     def __init__(
-        self, src: str, loc: str, co_num: int, speed_limit: int, session: "SSHSFTPInfo"
+        self, src: str, loc: str, co_num: int, speed_limit: int, session: "SSHSFTPInfo", search_coro_num: int = 16
     ) -> None:
-        super().__init__(src, loc, co_num, speed_limit, session)
+        super().__init__(src, loc, co_num, speed_limit, session, search_coro_num)
         self.task_list_mkdir = []
 
     async def _transport_file(self, src: str, loc: str) -> None:
@@ -429,24 +467,64 @@ class PUT(Transport):
             chunk_size = self._calc_chunk_size()
 
             async with self.sftp.open(loc, mode) as remote_file:
-                if start_pos > 0:
-                    await remote_file.seek(start_pos)
                 with open(src, "rb") as local_file:
                     local_file.seek(start_pos)
                     now_size = start_pos
-                    while True:
-                        await self.pause_event.wait()
-                        await self.limiter.consume(chunk_size)
-                        chunk = local_file.read(chunk_size)
-                        if not chunk:
-                            break
-                        await remote_file.write(chunk)
-                        now_size += len(chunk)
-                        await tracker(b"", b"", now_size, local_size)
+                    current_offset = start_pos
+                    
+                    # 改为 Semaphore(3)，因为底层 write(1MB) 内部本身就已拆分为128并发的 32KB管线
+                    # 128 * 1MB = 128MB 在途会导致严重的 SSH 信道拥塞和内存爆炸，3个任务衔接即可打满带宽
+                    semaphore = asyncio.Semaphore(3)
+                    write_tasks = set()
+                    bg_error = None
+                    
+                    last_track_time = time.monotonic()
+                    try:
+                        while True:
+                            if bg_error:
+                                raise bg_error
 
-        except asyncio.CancelledError:
-            # 用户主动取消，静默退出
-            raise
+                            await self.pause_event.wait()
+                            await self.limiter.consume(chunk_size)
+                            chunk = local_file.read(chunk_size)
+                            if not chunk:
+                                break
+                            
+                            await semaphore.acquire()
+                            
+                            async def write_chunk(data, off):
+                                nonlocal bg_error
+                                try:
+                                    await remote_file.write(data, offset=off)
+                                except Exception as e:
+                                    if bg_error is None:
+                                        bg_error = e
+                                finally:
+                                    semaphore.release()
+                                    
+                            task = asyncio.create_task(write_chunk(chunk, current_offset))
+                            write_tasks.add(task)
+                            task.add_done_callback(write_tasks.discard)
+                            
+                            current_offset += len(chunk)
+                            now_size += len(chunk)
+                            if time.monotonic() - last_track_time >= 0.05:
+                                await tracker(b"", b"", now_size, local_size)
+                                last_track_time = time.monotonic()
+                            
+                        if write_tasks:
+                            await asyncio.gather(*write_tasks)
+                        if bg_error:
+                            raise bg_error
+                        
+                        await tracker(b"", b"", now_size, local_size)
+                            
+                    except asyncio.CancelledError:
+                        for t in write_tasks:
+                            if not t.done():
+                                t.cancel()
+                        # 用户主动取消，静默退出
+                        raise
         except (OSError, asyncssh.SFTPError):
             all_size = os.path.getsize(src)
             tracker = ProgressTracker(self)
@@ -454,7 +532,15 @@ class PUT(Transport):
 
     async def search_transport_file(self, src: str, loc: str) -> int:
         total_size = 0
-        self.task_list_mkdir.append(self.sftp.makedirs(loc, exist_ok=True))
+        
+        if not hasattr(self, '_mkdir_sem'):
+            self._mkdir_sem = asyncio.Semaphore(self.search_coro_num)
+            
+        async def safe_mkdir(path):
+            async with self._mkdir_sem:
+                await self.sftp.makedirs(path, exist_ok=True)
+                
+        self.task_list_mkdir.append(safe_mkdir(loc))
         loop = asyncio.get_event_loop()
         entries = await loop.run_in_executor(None, lambda: list(os.scandir(src)))
         for entry in entries:
@@ -475,6 +561,7 @@ class PUT(Transport):
         self.pool = ImmediateSchedulerPool(self.co_num)
         src, loc = path_stand(self.src, self.loc)
         if os.path.isdir(src):
+            self.speed_updated.emit("正在遍历文件夹...")
             all_size = await self.search_transport_file(src, loc)
             self.range_initialized.emit(all_size)
             for future in asyncio.as_completed(self.task_list_mkdir):

@@ -101,7 +101,7 @@ class ProgressBar(QWidget):
         self.pause_button.hide()
         self.cancel_button.hide()
 
-    def mark_failed(self):
+    def mark_failed(self, *args):
         self.filename_label.setText(f"❌ {self.transport_type}: {self.filename}")
         self.pause_button.hide()
         self.retry_button.show()

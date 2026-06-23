@@ -134,6 +134,14 @@ class TransferSetupWidget(QWidget):
             lambda v: self.coro_num_label.setText(f"协程数量:{v}")
         )
 
+        self.search_coro_num_label = QLabel("遍历协程数:16")
+        self.search_coro_num_slider = QSlider(Qt.Orientation.Horizontal)
+        self.search_coro_num_slider.setRange(1, 200)
+        self.search_coro_num_slider.setValue(16)
+        self.search_coro_num_slider.valueChanged.connect(
+            lambda v: self.search_coro_num_label.setText(f"遍历协程数:{v}")
+        )
+
         self.speed_limit_spin = QSpinBox()
         self.speed_limit_spin.setRange(0, 999999)
         self.speed_limit_spin.setSuffix(" KB/s (0为不限速)")
@@ -159,6 +167,7 @@ class TransferSetupWidget(QWidget):
         form.addRow(self.src_edit, hbox)
         form.addRow(self.dst_edit, self.dst_btn)
         form.addRow(self.coro_num_label, self.coro_num_slider)
+        form.addRow(self.search_coro_num_label, self.search_coro_num_slider)
         form.addRow(QLabel("传输限速:"), self.speed_limit_spin)
         form.addRow(QLabel("文件过滤:"), self.filter_edit)
         form.addRow(self.transport_btn, QLabel())
@@ -197,19 +206,31 @@ class TransferSetupWidget(QWidget):
         self.select_remote_file_widget.close()
 
     def get_local_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, "选择文件")
-        if path:
-            self.src_edit.setText(path)
+        self.sftp_tab_widget._health_timer.stop()
+        try:
+            path, _ = QFileDialog.getOpenFileName(None, "选择文件")
+            if path:
+                self.src_edit.setText(path)
+        finally:
+            self.sftp_tab_widget._health_timer.start(10000)
 
     def get_local_dir(self):
-        path = QFileDialog.getExistingDirectory(self, "选择文件夹")
-        if path:
-            self.dst_edit.setText(path)
+        self.sftp_tab_widget._health_timer.stop()
+        try:
+            path = QFileDialog.getExistingDirectory(None, "选择文件夹")
+            if path:
+                self.dst_edit.setText(path)
+        finally:
+            self.sftp_tab_widget._health_timer.start(10000)
 
     def get_local_dir_for_src(self):
-        path = QFileDialog.getExistingDirectory(self, "选择文件夹")
-        if path:
-            self.src_edit.setText(path)
+        self.sftp_tab_widget._health_timer.stop()
+        try:
+            path = QFileDialog.getExistingDirectory(None, "选择文件夹")
+            if path:
+                self.src_edit.setText(path)
+        finally:
+            self.sftp_tab_widget._health_timer.start(10000)
 
     def start_transport(self):
         src, dst = self.src_edit.text(), self.dst_edit.text()
@@ -218,11 +239,12 @@ class TransferSetupWidget(QWidget):
             return
 
         coro, speed = self.coro_num_slider.value(), self.speed_limit_spin.value()
+        search_coro = self.search_coro_num_slider.value()
         patterns = self.filter_edit.text().strip()
         if self.mode == "GET":
-            self.transport_control_widget.get(src, dst, coro, speed, patterns)
+            self.transport_control_widget.get(src, dst, coro, speed, patterns, search_coro)
         else:
-            self.transport_control_widget.put(src, dst, coro, speed, patterns)
+            self.transport_control_widget.put(src, dst, coro, speed, patterns, search_coro)
             self.sftp_tab_widget.user_sftp_widget.remote_file_widget.refresh()
 
         self.close()
@@ -260,7 +282,7 @@ class TransportControlWidget(QListWidget):
         task.transport_failed.connect(pbar.warning_transport_fail_filename)
         task.speed_updated.connect(pbar.set_speed_text)
         task.transport_completed.connect(pbar.mark_completed)
-        task.transport_failed.connect(lambda *_: pbar.mark_failed())
+        task.transport_failed.connect(pbar.mark_failed)
 
         pbar.cancel_requested.connect(task.cancel)
         pbar.del_widget_msg.connect(lambda: self.takeItem(self.row(item)))
@@ -276,16 +298,17 @@ class TransportControlWidget(QListWidget):
         coro_num: int,
         speed_limit: int = 0,
         patterns: str = "",
+        search_coro_num: int = 16,
     ):
         self.clear_finish_task()
         icon = self.FILE_ICON if self.info.is_file(src) else self.DIR_ICON
         pbar = ProgressBar(src, "下载", icon)
-        task = GET(src, dst, coro_num, speed_limit, self.info)
+        task = GET(src, dst, coro_num, speed_limit, self.info, search_coro_num)
         task.filter_patterns = patterns
         self._create_task_ui(
             pbar,
             task,
-            get_fn=lambda: self.get(src, dst, coro_num, speed_limit, patterns),
+            get_fn=lambda: self.get(src, dst, coro_num, speed_limit, patterns, search_coro_num),
         )
         self.task_list.append(task)
         task()
@@ -305,16 +328,17 @@ class TransportControlWidget(QListWidget):
         coro_num: int,
         speed_limit: int = 0,
         patterns: str = "",
+        search_coro_num: int = 16,
     ):
         self.clear_finish_task()
         icon = self.FILE_ICON if os.path.isfile(src) else self.DIR_ICON
         pbar = ProgressBar(src, "上传", icon)
-        task = PUT(src, dst, coro_num, speed_limit, self.info)
+        task = PUT(src, dst, coro_num, speed_limit, self.info, search_coro_num)
         task.filter_patterns = patterns
         self._create_task_ui(
             pbar,
             task,
-            put_fn=lambda: self.put(src, dst, coro_num, speed_limit, patterns),
+            put_fn=lambda: self.put(src, dst, coro_num, speed_limit, patterns, search_coro_num),
         )
         self.task_list.append(task)
         task()
